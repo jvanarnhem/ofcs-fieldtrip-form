@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>OFCS Field Trip Application</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --ofcs-primary: #0d6efd;
+            --ofcs-secondary: #6c757d;
+            --ofcs-success: #198754;
+            --ofcs-danger: #dc3545;
+            --ofcs-warning: #ffc107;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 0;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .form-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .form-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .form-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.95;
+        }
+
+        .form-body {
+            padding: 40px;
+        }
+
+        .section-header {
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+            margin-top: 30px;
+        }
+
+        .section-header:first-child {
+            margin-top: 0;
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+            color: #667eea;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .required-indicator {
+            color: var(--ofcs-danger);
+            font-weight: bold;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+        }
+
+        .invalid-feedback {
+            display: block;
+            font-size: 0.875rem;
+            margin-top: 5px;
+        }
+
+        .is-invalid {
+            border-color: var(--ofcs-danger);
+        }
+
+        .is-valid {
+            border-color: var(--ofcs-success);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .btn-draft {
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-draft:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .help-text {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .alert {
+            border-radius: 8px;
+            border: none;
+        }
+
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .conditional-field {
+            display: none;
+        }
+
+        .form-footer {
+            background: #f8f9fa;
+            padding: 30px 40px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        @media (max-width: 768px) {
+            .form-body {
+                padding: 20px;
+            }
+
+            .form-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .btn-submit, .btn-draft {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 mb-0">Submitting your application...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="form-container">
+            <!-- Form Header -->
+            <div class="form-header">
+                <h1><i class="bi bi-bus-front"></i> Field Trip Application</h1>
+                <p>Owen D. Young Central School District</p>
+            </div>
+
+            <!-- Alert Area -->
+            <div id="alertArea" class="m-4"></div>
+
+            <!-- Form Body -->
+            <form id="fieldTripForm" novalidate>
+                <div class="form-body">
+
+                    <!-- Trip Information Section -->
+                    <div class="section-header">
+                        <h2><i class="bi bi-map"></i> Trip Information</h2>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="destination" class="form-label">
+                                Destination <span class="required-indicator">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="destination" name="destination" required maxlength="200">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="trip_date" class="form-label">
+                                Date of Trip <span class="required-indicator">*</span>
+                            </label>
+                            <input type="date" class="form-control" id="trip_date" name="trip_date" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="building" class="form-label">
+                                Building <span class="required-indicator">*</span>
+                            </label>
+                            <select class="form-select" id="building" name="building" required>
+                                <option value="">Select Building...</option>
+                                <option value="HS">High School</option>
+                                <option value="MS">Middle School</option>
+                                <option value="IS">Intermediate School</option>
+                                <option value="FL">Florence Lawson Elementary</option>
+                                <option value="ECC">Early Childhood Center</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Information Section -->
+                    <div class="section-header">
+                        <h2><i class="bi bi-person-circle"></i> Contact Information</h2>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="adult_in_charge" class="form-label">
+                                Teacher/Adult in Charge <span class="required-indicator">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="adult_in_charge" name="adult_in_charge" required maxlength="100">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">
+                                Email Address <span class="required-indicator">*</span>
+                            </label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">
+                                Phone Number <span class="required-indicator">*</span>
+                            </label>
+                            <input type="tel" class="form-control" id="phone" name="phone" required placeholder="(XXX) XXX-XXXX">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <!-- Group Details Section -->
+                    <div class="section-header">
+                        <h2><i class="bi bi-people"></i> Group Details</h2>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="grade_level" class="form-label">
+                                Grade Level(s) <span class="required-indicator">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="grade_level" name="grade_level" required maxlength="50" placeholder="e.g., 3rd Grade, 9-12">
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="num_students" class="form-label">
+                                Number of Students <span class="required-indicator">*</span>
+                            </label>
+                            <input type="number" class="form-control" id="num_students" name="num_students" required min="1">
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="num_adults" class="form-label">
+                                Number of Chaperones <span class="required-indicator">*</span>
+                            </label>
+                            <input type="number" class="form-control" id="num_adults" name="num_adults" required min="1">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <!-- Schedule Section -->
+                    <div class="section-header">
+                        <h2><i class="bi bi-clock"></i> Schedule</h2>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="leave_school" class="form-label">
+                                Time Leaving School <span class="required-indicator">*</span>
+                            </label>
+                            <input type="time" class="form-control" id="leave_school" name="leave_school" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="arrive_destination" class="form-label">
+                                Time Arriving at Destination <span class="required-indicator">*</span>
+                            </label>
+                            <input type="time" class="form-control" id="arrive_destination" name="arrive_destination" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="leave_destination" class="form-label">
+                                Time Leaving Destination <span class="required-indicator">*</span>
+                            </label>
+                            <input type="time" class="form-control" id="leave_destination" name="leave_destination" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="arrive_school" class="form-label">
+                                Time Arriving Back at School <span class="required-indicator">*</span>
+                            </label>
+                            <input type="time" class="form-control" id="arrive_school" name="arrive_school" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <!-- Transportation Section -->
+                    <div class="section-header">
+                        <h2><i class="bi bi-truck"></i> Transportation</h2>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="transportation" class="form-label">
+                                Mode of Transportation <span class="required-indicator">*</span>
+                            </label>
+                            <select class="form-select" id="transportation" name="transportation" required>
+                                <option value="">Select Transportation...</option>
+                                <option value="School Bus">School Bus</option>
+                                <option value="Walking">Walking</option>
+                                <option value="Parent/Guardian Vehicles">Parent/Guardian Vehicles</option>
+                                <option value="Public Transportation">Public Transportation</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-6 mb-3 conditional-field" id="transportation_other_wrapper">
+                            <label for="transportation_other" class="form-label">
+                                Please Specify Transportation <span class="required-indicator">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="transportation_other" name="transportation_other" maxlength="100">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <!-- Educational Purpose Section -->
+                    <div class="section-header">
+                        <h2><i class="bi bi-book"></i> Educational Purpose</h2>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="purpose" class="form-label">
+                                Purpose of Trip <span class="required-indicator">*</span>
+                            </label>
+                            <textarea class="form-control" id="purpose" name="purpose" rows="3" required maxlength="1000" placeholder="Describe the educational purpose and learning objectives of this field trip"></textarea>
+                            <div class="help-text">Maximum 1000 characters. <span id="purposeCount">0/1000</span></div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="curriculum_connection" class="form-label">
+                                Curriculum Connection <span class="required-indicator">*</span>
+                            </label>
+                            <textarea class="form-control" id="curriculum_connection" name="curriculum_connection" rows="3" required maxlength="500" placeholder="How does this trip connect to your curriculum standards and learning goals?"></textarea>
+                            <div class="help-text">Maximum 500 characters. <span id="curriculumCount">0/500</span></div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <!-- Cost Section -->
+                    <div class="section-header">
+                        <h2><i class="bi bi-currency-dollar"></i> Cost Information</h2>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cost_per_student" class="form-label">
+                                Cost Per Student ($) <span class="required-indicator">*</span>
+                            </label>
+                            <input type="number" class="form-control" id="cost_per_student" name="cost_per_student" required min="0" step="0.01" placeholder="0.00">
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="funding_source" class="form-label">
+                                Funding Source <span class="text-muted">(Optional)</span>
+                            </label>
+                            <input type="text" class="form-control" id="funding_source" name="funding_source" maxlength="200" placeholder="e.g., General Fund, PTO, Grant">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Form Footer with Buttons -->
+                <div class="form-footer">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div class="text-muted">
+                            <small><span class="required-indicator">*</span> Required fields</small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-draft" id="saveDraftBtn">
+                                <i class="bi bi-save"></i> Save Draft
+                            </button>
+                            <button type="submit" class="btn btn-submit" id="submitBtn">
+                                <i class="bi bi-send"></i> Submit Application
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Real-time validation and form handling
+        (function() {
+            'use strict';
+
+            const form = document.getElementById('fieldTripForm');
+            const alertArea = document.getElementById('alertArea');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+
+            // Validation rules (from server)
+            const validationRules = <?!= getValidationRules() ?>;
+
+            // Character counters
+            document.getElementById('purpose').addEventListener('input', function() {
+                document.getElementById('purposeCount').textContent = this.value.length + '/1000';
+            });
+
+            document.getElementById('curriculum_connection').addEventListener('input', function() {
+                document.getElementById('curriculumCount').textContent = this.value.length + '/500';
+            });
+
+            // Phone number formatting
+            document.getElementById('phone').addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length > 10) value = value.substring(0, 10);
+
+                if (value.length >= 6) {
+                    e.target.value = '(' + value.substring(0, 3) + ') ' + value.substring(3, 6) + '-' + value.substring(6);
+                } else if (value.length >= 3) {
+                    e.target.value = '(' + value.substring(0, 3) + ') ' + value.substring(3);
+                } else if (value.length > 0) {
+                    e.target.value = '(' + value;
+                }
+            });
+
+            // Conditional fields
+            document.getElementById('transportation').addEventListener('change', function() {
+                const otherWrapper = document.getElementById('transportation_other_wrapper');
+                const otherField = document.getElementById('transportation_other');
+
+                if (this.value === 'Other') {
+                    otherWrapper.style.display = 'block';
+                    otherField.required = true;
+                } else {
+                    otherWrapper.style.display = 'none';
+                    otherField.required = false;
+                    otherField.value = '';
+                }
+            });
+
+            // Real-time validation
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('blur', function() {
+                    validateField(this);
+                });
+
+                input.addEventListener('input', function() {
+                    if (this.classList.contains('is-invalid')) {
+                        validateField(this);
+                    }
+                });
+            });
+
+            function validateField(field) {
+                const value = field.value.trim();
+                const fieldName = field.name;
+                const feedbackEl = field.nextElementSibling;
+
+                // Required field check
+                if (field.hasAttribute('required') && !value) {
+                    field.classList.add('is-invalid');
+                    field.classList.remove('is-valid');
+                    if (feedbackEl && feedbackEl.classList.contains('invalid-feedback')) {
+                        feedbackEl.textContent = 'This field is required';
+                    }
+                    return false;
+                }
+
+                // Skip validation for empty optional fields
+                if (!field.hasAttribute('required') && !value) {
+                    field.classList.remove('is-invalid', 'is-valid');
+                    return true;
+                }
+
+                // Type-specific validation
+                let isValid = true;
+                let errorMessage = '';
+
+                switch (field.type) {
+                    case 'email':
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(value)) {
+                            isValid = false;
+                            errorMessage = 'Please enter a valid email address';
+                        }
+                        break;
+
+                    case 'tel':
+                        const phoneDigits = value.replace(/\D/g, '');
+                        if (phoneDigits.length !== 10) {
+                            isValid = false;
+                            errorMessage = 'Please enter a valid 10-digit phone number';
+                        }
+                        break;
+
+                    case 'date':
+                        const selectedDate = new Date(value);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+
+                        if (selectedDate < today) {
+                            isValid = false;
+                            errorMessage = 'Trip date must be in the future';
+                        }
+                        break;
+
+                    case 'number':
+                        const num = parseFloat(value);
+                        if (isNaN(num)) {
+                            isValid = false;
+                            errorMessage = 'Please enter a valid number';
+                        } else if (field.hasAttribute('min') && num < parseFloat(field.min)) {
+                            isValid = false;
+                            errorMessage = 'Value must be at least ' + field.min;
+                        }
+                        break;
+
+                    case 'time':
+                        // Validate time sequences
+                        if (fieldName === 'arrive_destination') {
+                            const leaveSchool = document.getElementById('leave_school').value;
+                            if (leaveSchool && value <= leaveSchool) {
+                                isValid = false;
+                                errorMessage = 'Arrival time must be after departure from school';
+                            }
+                        } else if (fieldName === 'leave_destination') {
+                            const arriveDestination = document.getElementById('arrive_destination').value;
+                            if (arriveDestination && value <= arriveDestination) {
+                                isValid = false;
+                                errorMessage = 'Departure time must be after arrival at destination';
+                            }
+                        } else if (fieldName === 'arrive_school') {
+                            const leaveDestination = document.getElementById('leave_destination').value;
+                            if (leaveDestination && value <= leaveDestination) {
+                                isValid = false;
+                                errorMessage = 'Arrival time must be after departure from destination';
+                            }
+                        }
+                        break;
+                }
+
+                // Update field state
+                if (isValid) {
+                    field.classList.remove('is-invalid');
+                    field.classList.add('is-valid');
+                } else {
+                    field.classList.add('is-invalid');
+                    field.classList.remove('is-valid');
+                    if (feedbackEl && feedbackEl.classList.contains('invalid-feedback')) {
+                        feedbackEl.textContent = errorMessage;
+                    }
+                }
+
+                return isValid;
+            }
+
+            function validateForm() {
+                let isValid = true;
+                inputs.forEach(input => {
+                    if (!validateField(input)) {
+                        isValid = false;
+                    }
+                });
+                return isValid;
+            }
+
+            function showAlert(message, type = 'danger') {
+                alertArea.innerHTML = `
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                alertArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            function getFormData() {
+                const formData = {};
+                inputs.forEach(input => {
+                    if (input.name) {
+                        formData[input.name] = input.value;
+                    }
+                });
+                return formData;
+            }
+
+            function saveDraft() {
+                const formData = getFormData();
+                localStorage.setItem('fieldTripDraft', JSON.stringify(formData));
+                showAlert('Draft saved successfully! You can return to this form later.', 'success');
+            }
+
+            function loadDraft() {
+                const draft = localStorage.getItem('fieldTripDraft');
+                if (draft) {
+                    try {
+                        const formData = JSON.parse(draft);
+                        Object.keys(formData).forEach(key => {
+                            const field = document.querySelector(`[name="${key}"]`);
+                            if (field && formData[key]) {
+                                field.value = formData[key];
+
+                                // Trigger change event for conditional fields
+                                if (field.type === 'select-one') {
+                                    field.dispatchEvent(new Event('change'));
+                                }
+                            }
+                        });
+                        showAlert('Previous draft loaded. Continue editing or submit when ready.', 'info');
+                    } catch (e) {
+                        console.error('Error loading draft:', e);
+                    }
+                }
+            }
+
+            // Load draft on page load
+            window.addEventListener('load', function() {
+                if (localStorage.getItem('fieldTripDraft')) {
+                    if (confirm('A saved draft was found. Would you like to load it?')) {
+                        loadDraft();
+                    }
+                }
+            });
+
+            // Save draft button
+            document.getElementById('saveDraftBtn').addEventListener('click', function() {
+                saveDraft();
+            });
+
+            // Form submission
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (!validateForm()) {
+                    showAlert('Please correct the errors in the form before submitting.', 'danger');
+                    return;
+                }
+
+                const formData = getFormData();
+
+                // Show loading overlay
+                loadingOverlay.style.display = 'flex';
+
+                // Submit to server
+                google.script.run
+                    .withSuccessHandler(function(response) {
+                        loadingOverlay.style.display = 'none';
+
+                        if (response.success) {
+                            // Clear draft
+                            localStorage.removeItem('fieldTripDraft');
+
+                            // Show success message
+                            showAlert(
+                                '<strong>Success!</strong> Your field trip application has been submitted. ' +
+                                'You will receive a confirmation email shortly. Submission #' + response.submissionNumber,
+                                'success'
+                            );
+
+                            // Reset form
+                            form.reset();
+                            inputs.forEach(input => {
+                                input.classList.remove('is-valid', 'is-invalid');
+                            });
+
+                            // Scroll to top
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        } else {
+                            showAlert(
+                                '<strong>Error!</strong> ' + (response.message || 'An error occurred. Please try again.'),
+                                'danger'
+                            );
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        loadingOverlay.style.display = 'none';
+                        showAlert(
+                            '<strong>Error!</strong> Failed to submit form. Please try again or contact support.',
+                            'danger'
+                        );
+                        console.error('Submission error:', error);
+                    })
+                    .submitFieldTripForm(JSON.stringify(formData));
+            });
+
+        })();
+    </script>
+</body>
+</html>
