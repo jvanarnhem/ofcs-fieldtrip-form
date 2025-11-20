@@ -1,0 +1,12 @@
+# Files to ignore when pushing to Apps Script
+.git/**
+.gitignore
+.clasp.json
+.clasp.dev.json
+.clasp.prod.json
+.clasprc.json
+node_modules/**
+README.md
+switch-env.sh
+.DS_Store
+*.log

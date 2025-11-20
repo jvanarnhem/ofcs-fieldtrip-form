@@ -1,6 +1,9 @@
 # CLASP credentials - NEVER commit these
 .clasprc.json
 
+# Active CLASP config - gets swapped between .clasp.prod.json and .clasp.dev.json
+.clasp.json
+
 # Node modules if you add any dependencies
 node_modules/
 
