@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Admin Review - Field Trip Application</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .review-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 0;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .review-header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .review-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .review-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .review-body {
+            padding: 40px;
+        }
+
+        .section-header {
+            border-bottom: 3px solid #f093fb;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+            margin-top: 30px;
+        }
+
+        .section-header:first-child {
+            margin-top: 0;
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+            color: #f5576c;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .info-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-table td:first-child {
+            font-weight: 600;
+            color: #495057;
+            width: 35%;
+        }
+
+        .info-table td:last-child {
+            color: #212529;
+        }
+
+        .info-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .decision-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+
+        .btn-approve {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-approve:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(40, 167, 69, 0.4);
+            color: white;
+        }
+
+        .btn-reject {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-reject:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(220, 53, 69, 0.4);
+            color: white;
+        }
+
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        @media (max-width: 768px) {
+            .review-body {
+                padding: 20px;
+            }
+
+            .review-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .btn-approve, .btn-reject {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            .info-table td:first-child {
+                width: 40%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 mb-0">Processing your decision...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="review-container">
+            <!-- Review Header -->
+            <div class="review-header">
+                <h1><i class="bi bi-clipboard-check"></i> Building Administrator Review</h1>
+                <p>Field Trip Application Approval</p>
+                <div class="review-badge">BUILDING LEVEL REVIEW</div>
+            </div>
+
+            <!-- Alert Area -->
+            <div id="alertArea" class="m-4"></div>
+
+            <!-- Review Body -->
+            <div class="review-body">
+                <div class="mb-4">
+                    <span class="status-badge status-pending">
+                        <i class="bi bi-clock-history"></i> Pending Building Approval
+                    </span>
+                </div>
+
+                <!-- Trip Information -->
+                <div class="section-header">
+                    <h2><i class="bi bi-map"></i> Trip Information</h2>
+                </div>
+                <table class="info-table">
+                    <tr>
+                        <td>Submission Number</td>
+                        <td><strong id="submission_number">-</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Destination</td>
+                        <td id="destination">-</td>
+                    </tr>
+                    <tr>
+                        <td>Date of Trip</td>
+                        <td id="trip_date">-</td>
+                    </tr>
+                    <tr>
+                        <td>Day of Week</td>
+                        <td id="day_of_week">-</td>
+                    </tr>
+                    <tr>
+                        <td>Building</td>
+                        <td id="building">-</td>
+                    </tr>
+                </table>
+
+                <!-- Contact Information -->
+                <div class="section-header">
+                    <h2><i class="bi bi-person-circle"></i> Contact Information</h2>
+                </div>
+                <table class="info-table">
+                    <tr>
+                        <td>Teacher/Adult in Charge</td>
+                        <td id="adult_in_charge">-</td>
+                    </tr>
+                    <tr>
+                        <td>Email Address</td>
+                        <td><a href="#" id="email">-</a></td>
+                    </tr>
+                    <tr>
+                        <td>Phone Number</td>
+                        <td id="phone">-</td>
+                    </tr>
+                </table>
+
+                <!-- Group Details -->
+                <div class="section-header">
+                    <h2><i class="bi bi-people"></i> Group Details</h2>
+                </div>
+                <table class="info-table">
+                    <tr>
+                        <td>Grade Level(s)</td>
+                        <td id="grade_level">-</td>
+                    </tr>
+                    <tr>
+                        <td>Number of Students</td>
+                        <td id="num_students">-</td>
+                    </tr>
+                    <tr>
+                        <td>Number of Chaperones</td>
+                        <td id="num_adults">-</td>
+                    </tr>
+                </table>
+
+                <!-- Schedule -->
+                <div class="section-header">
+                    <h2><i class="bi bi-clock"></i> Schedule</h2>
+                </div>
+                <table class="info-table">
+                    <tr>
+                        <td>Time Leaving School</td>
+                        <td id="leave_school">-</td>
+                    </tr>
+                    <tr>
+                        <td>Time Arriving at Destination</td>
+                        <td id="arrive_destination">-</td>
+                    </tr>
+                    <tr>
+                        <td>Time Leaving Destination</td>
+                        <td id="leave_destination">-</td>
+                    </tr>
+                    <tr>
+                        <td>Time Arriving Back at School</td>
+                        <td id="arrive_school">-</td>
+                    </tr>
+                </table>
+
+                <!-- Transportation -->
+                <div class="section-header">
+                    <h2><i class="bi bi-truck"></i> Transportation</h2>
+                </div>
+                <table class="info-table">
+                    <tr>
+                        <td>Mode of Transportation</td>
+                        <td id="transportation">-</td>
+                    </tr>
+                    <tr id="transportation_other_row" style="display: none;">
+                        <td>Transportation Details</td>
+                        <td id="transportation_other">-</td>
+                    </tr>
+                </table>
+
+                <!-- Educational Purpose -->
+                <div class="section-header">
+                    <h2><i class="bi bi-book"></i> Educational Purpose</h2>
+                </div>
+                <table class="info-table">
+                    <tr>
+                        <td>Purpose of Trip</td>
+                        <td><div id="purpose" style="white-space: pre-wrap;">-</div></td>
+                    </tr>
+                    <tr>
+                        <td>Curriculum Connection</td>
+                        <td><div id="curriculum_connection" style="white-space: pre-wrap;">-</div></td>
+                    </tr>
+                </table>
+
+                <!-- Cost Information -->
+                <div class="section-header">
+                    <h2><i class="bi bi-currency-dollar"></i> Cost Information</h2>
+                </div>
+                <table class="info-table">
+                    <tr>
+                        <td>Cost Per Student</td>
+                        <td id="cost_per_student">-</td>
+                    </tr>
+                    <tr>
+                        <td>Funding Source</td>
+                        <td id="funding_source">-</td>
+                    </tr>
+                </table>
+
+                <!-- Decision Section -->
+                <div class="decision-section">
+                    <h3 class="mb-3"><i class="bi bi-chat-left-text"></i> Building Administrator Comments</h3>
+                    <div class="mb-3">
+                        <label for="comments" class="form-label">Add your comments or notes (optional)</label>
+                        <textarea class="form-control" id="comments" rows="4" placeholder="Enter any comments, concerns, or notes about this field trip application..."></textarea>
+                        <div class="form-text">These comments will be shared with the district administrator if approved, or with the submitter if rejected.</div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Approval:</strong> Will forward this application to the district administrator for final approval.
+                        <br>
+                        <strong>Rejection:</strong> Will notify the submitter that this trip has not been approved at the building level.
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-3 flex-wrap mt-4">
+                        <button type="button" class="btn btn-reject" id="rejectBtn">
+                            <i class="bi bi-x-circle"></i> Reject Application
+                        </button>
+                        <button type="button" class="btn btn-approve" id="approveBtn">
+                            <i class="bi bi-check-circle"></i> Approve & Forward
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const alertArea = document.getElementById('alertArea');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const submissionData = <?!= JSON.stringify(info) ?>;
+
+            // Populate form with submission data
+            function populateData(data) {
+                // Map data array to fields based on your schema
+                // Note: This assumes the data array matches the order in your current system
+                // You may need to adjust indices based on your actual data structure
+
+                document.getElementById('submission_number').textContent = data.submission_number || data[0] || '-';
+                document.getElementById('destination').textContent = data.destination || '-';
+                document.getElementById('trip_date').textContent = data.trip_date || '-';
+                document.getElementById('day_of_week').textContent = data.day_of_week || '-';
+                document.getElementById('building').textContent = data.building || '-';
+
+                document.getElementById('adult_in_charge').textContent = data.adult_in_charge || '-';
+                const email = data.email || '';
+                document.getElementById('email').textContent = email;
+                document.getElementById('email').href = 'mailto:' + email;
+                document.getElementById('phone').textContent = data.phone || '-';
+
+                document.getElementById('grade_level').textContent = data.grade_level || '-';
+                document.getElementById('num_students').textContent = data.num_students || '-';
+                document.getElementById('num_adults').textContent = data.num_adults || '-';
+
+                document.getElementById('leave_school').textContent = data.leave_school || '-';
+                document.getElementById('arrive_destination').textContent = data.arrive_destination || '-';
+                document.getElementById('leave_destination').textContent = data.leave_destination || '-';
+                document.getElementById('arrive_school').textContent = data.arrive_school || '-';
+
+                const transportation = data.transportation || '-';
+                document.getElementById('transportation').textContent = transportation;
+
+                if (data.transportation_other) {
+                    document.getElementById('transportation_other_row').style.display = '';
+                    document.getElementById('transportation_other').textContent = data.transportation_other;
+                }
+
+                document.getElementById('purpose').textContent = data.purpose || '-';
+                document.getElementById('curriculum_connection').textContent = data.curriculum_connection || '-';
+
+                document.getElementById('cost_per_student').textContent = data.cost_per_student ? '$' + parseFloat(data.cost_per_student).toFixed(2) : '-';
+                document.getElementById('funding_source').textContent = data.funding_source || 'Not specified';
+            }
+
+            function showAlert(message, type = 'danger') {
+                alertArea.innerHTML = `
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                alertArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            function handleDecision(action) {
+                const comments = document.getElementById('comments').value.trim();
+                const submissionNumber = submissionData.submission_number || submissionData[0];
+
+                if (action === 'reject' && !comments) {
+                    if (!confirm('You have not added any comments. Are you sure you want to reject without comments?')) {
+                        return;
+                    }
+                }
+
+                const confirmMessage = action === 'approve'
+                    ? 'Are you sure you want to APPROVE this field trip and forward it to the district administrator?'
+                    : 'Are you sure you want to REJECT this field trip application?';
+
+                if (!confirm(confirmMessage)) {
+                    return;
+                }
+
+                const approvalData = {
+                    submission_number: submissionNumber,
+                    action: action,
+                    comments: comments,
+                    destination: submissionData.destination,
+                    tripdate: submissionData.trip_date,
+                    timeStamp: submissionData.timestamp,
+                    adultincharge: submissionData.adult_in_charge
+                };
+
+                loadingOverlay.style.display = 'flex';
+
+                google.script.run
+                    .withSuccessHandler(function(response) {
+                        loadingOverlay.style.display = 'none';
+
+                        if (response.success) {
+                            const message = action === 'approve'
+                                ? '<strong>Approved!</strong> This application has been forwarded to the district administrator.'
+                                : '<strong>Rejected!</strong> The submitter has been notified.';
+
+                            showAlert(message, 'success');
+
+                            // Disable buttons
+                            document.getElementById('approveBtn').disabled = true;
+                            document.getElementById('rejectBtn').disabled = true;
+                            document.getElementById('comments').disabled = true;
+
+                            // Show completion message
+                            setTimeout(function() {
+                                showAlert(
+                                    'This review is complete. You may close this window.',
+                                    'info'
+                                );
+                            }, 3000);
+                        } else {
+                            showAlert(
+                                '<strong>Error!</strong> ' + (response.message || 'An error occurred. Please try again.'),
+                                'danger'
+                            );
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        loadingOverlay.style.display = 'none';
+                        showAlert(
+                            '<strong>Error!</strong> Failed to process your decision. Please try again or contact support.',
+                            'danger'
+                        );
+                        console.error('Decision error:', error);
+                    })
+                    .approveBuildingAdmin(JSON.stringify(approvalData));
+            }
+
+            // Event listeners
+            document.getElementById('approveBtn').addEventListener('click', function() {
+                handleDecision('approve');
+            });
+
+            document.getElementById('rejectBtn').addEventListener('click', function() {
+                handleDecision('reject');
+            });
+
+            // Populate data on load
+            if (submissionData) {
+                populateData(submissionData);
+            } else {
+                showAlert('Error: No submission data found.', 'danger');
+            }
+
+        })();
+    </script>
+</body>
+</html>
