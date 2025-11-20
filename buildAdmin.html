@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <!--Import Google Icon Font-->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css">
+    <title>Field Trip Application</title>
+  </head>
+  <body>
+    <div class="container">
+      <form class="main" id="formValidate" novalidate="novalidate">
+        <div id="forminner">
+          
+          <div class="nav-wrapper" align="center" style="margin-bottom: 0px;"> 
+            <div class="col s12"> 
+              <img class="responsive-img" src="https://ofhsmath.com/online_forms/images/FieldTripApplication2.png" alt="school banner">
+            </div>     
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="col s12">
+              <p class="center-align"><span class="req">*</span> Indicates a required field.</p>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m6">
+              <input id="subNum" type="text" name="subNum" value="<?= info[0] ?>" readonly>
+              <label for="subNum">Submission ID</label>
+            </div>
+            <div class="input-field col s12 m6">
+              <input id="timeStamp" type="text" name="timeStamp" value="<?= info[1] ?>" readonly>
+              <label for="timeStamp">Date of Report Submission</label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="destination" type="text" name="destination" value="<?= info[3] ?>" readonly>
+              <label for="destination">Destination<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m4">
+              <input id="dayOfWeek" type="text" name="dayOfWeek" value="<?= info[2] ?>" readonly>
+              <label for="dayOfWeek">Day of Week</label>
+            </div>
+            <div class="input-field col s12 m4">
+              <input type="text" id="tripdate" name="tripdate" value="<?= info[4] ?>" readonly>
+              <label for="tripdate">Date of Trip <span class="req">*</span></label>
+            </div>
+            <div class="input-field col s12 m4">
+              <input id="building" type="text" name="building" value="<?= info[5] ?>" readonly>
+              <label for="building">Building</label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="adultincharge" type="text" name="adultincharge" value="<?= info[6] ?>" readonly>
+              <label for="adultincharge">Teacher/Adult in Charge<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="email" type="email" name="email" value="<?= info[7] ?>" readonly>
+              <label for="email">Adult in Charge Email<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="phone" type="text" name="phone" value="<?= info[8] ?>" readonly>
+              <label for="phone">Phone Number <span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <textarea id="adultassisting" name="adultassisting" class="materialize-textarea" readonly><?= info[9] ?></textarea>
+              <label for="adultassisting">Other Adults Assisting (enter names one per line)</label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m6">
+              <input id="numadults" type="number" name="numadults" value="<?= info[10] ?>" readonly>
+              <label for="numadults">Total Number of Adults Riding<span class="req">*</span></label>
+            </div>
+            <div class="input-field col s12 m6">
+              <input id="numstudents" type="number" name="numstudents" value="<?= info[11] ?>" readonly>
+              <label for="numstudents">Total Number of Students Riding<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="col s12">
+              <p class="left-align">Large Bus = 56 seated 2 per seat<br>
+              Small Bus =  15/20 passenger capacity (with lift and safety securements)<br><br></p>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m4">
+              <input id="largebus" type="number" name="largebus" value="<?= info[12] ?>" readonly>
+              <label for="largebus">Number of Large Buses<span class="req">*</span></label>
+            </div>
+            <div class="input-field col s12 m4">
+              <input id="smallbus" type="number" name="smallbus" value="<?= info[13] ?>" readonly>
+              <label for="smallbus">Number of Small Buses<span class="req">*</span></label>
+            </div>
+            <div class="input-field col s12 m4">
+              <input id="vans" type="number" name="vans" value="<?= info[14] ?>" readonly>
+              <label for="vans">Number of Vans<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="col s12">
+              <span class="req2">* Small buses are wheelchair accessible. If wheelchair lift is needed, please call the Transportation Dept.(440) 427-6350.<br>
+              * Van drivers must be van certified prior to driving students in the school van<br><br></span>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="depart" type="text" name="depart" value="<?= info[15] ?>" readonly>
+              <label for="depart">Depart From<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="destaddress" type="text" name="destaddress" value="<?= info[16] ?>" readonly>
+              <label for="destaddress">Destination Full Address<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m6">
+              <input type="text" id="leaveschool" name="leaveschool" value="<?= info[17] ?>" readonly>
+              <label for="leaveschool">School Departure Time<span class="req">*</span></label>
+            </div>
+            <div class="input-field col s12 m6">
+              <input type="text" id="arrivedestination" name="arrivedestination" value="<?= info[18] ?>" readonly>
+              <label for="arrivedestination">Estimated Destination Arrival Time<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m6">
+              <input type="text" id="leavedestination" name="leavedestination" value="<?= info[19] ?>" readonly>
+              <label for="leavedestination">Destination Departure Time<span class="req">*</span></label>
+            </div>
+            <div class="input-field col s12 m6">
+              <input type="text" id="arriveschool" name="arriveschool" value="<?= info[20] ?>" readonly>
+              <label for="arriveschool">Estimated School Return Arrival Time<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m6">
+              <input type="text" id="eat" name="eat" value="<?= info[21] ?>" readonly>
+              <label for="eat">Extra Stop to Eat</label>
+            </div>
+            <div class="input-field col s12 m6">
+              <input type="text" id="restroom" name="restroom" value="<?= info[22] ?>" readonly>
+              <label for="restroom">Extra Stop for Restroom</label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <textarea id="comments" name="comments" class="materialize-textarea" readonly><?= info[23] ?></textarea>
+              <label for="comments">Purpose of trip and comments/special requests.</label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <textarea id="buildcomments" name="buildcomments" class="materialize-textarea"></textarea>
+              <label for="buildcomments">Building Administrator Comments:</label>
+            </div>
+          </div>
+          
+          <div id="output"></div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 center-align">
+              <!-- onclick="submitForm(); return false;" -->
+              <button class="waves-effect waves-light btn green submit-btn" id="btnApprove" type="submit">Approve
+                <i class="material-icons right">check</i>
+              </button>
+              <button class="waves-effect waves-light btn red submit-btn" id="btnReject" type="submit">Reject
+                <i class="material-icons right">clear</i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.17.0/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+    
+
+    <script>
+      function approve() {
+        document.getElementById('btnApprove').disabled=true;
+        document.getElementById('btnReject').disabled=true;
+    
+        const form = document.getElementsByClassName('main')[0];
+        const data = formToJSON(form.elements);
+        console.log(data);
+      
+        var dataToSend = JSON.stringify(data, null, "  ");
+        
+        google.script.run
+          .withSuccessHandler (onSuccess)
+          .withFailureHandler (onFailure)
+          .withUserObject(this)
+          .approveSubmission1(dataToSend);
+      }
+      
+      function reject() {
+        document.getElementById('btnApprove').disabled=true;
+        document.getElementById('btnReject').disabled=true;
+        
+        const form = document.getElementsByClassName('main')[0];
+        const data = formToJSON(form.elements);
+        console.log(data);
+      
+        var dataToSend = JSON.stringify(data, null, "  ");
+        
+        google.script.run
+          .withSuccessHandler (onSuccess)
+          .withFailureHandler (onFailure)
+          .withUserObject(this)
+          .rejectSubmission1(dataToSend);
+      }
+      
+      function onSuccess() {
+        var div = document.getElementById('output');
+        div.innerHTML = 'Form submission completed.';
+      }
+      function onFailure() {
+        var div = document.getElementById('output');
+        div.innerHTML = 'Something went wrong!';
+      }
+      
+    
+      const formToJSON = (elements) => [].reduce.call(elements, (data, element) => {
+        // Make sure the element has the required properties.
+        if (isValidElement(element) && isValidValue(element)) {
+          if (isCheckbox(element)) {
+            data[element.name] = (data[element.name] || []).concat(element.value);
+          } else {
+            data[element.name] = element.value;
+          }
+        }
+        
+        return data;
+      }, {});
+     
+      const isValidElement = element => {
+        return element.name;
+      };
+      const isValidValue = element => {
+        return (!['checkbox', 'radio'].includes(element.type) || element.checked);
+      };
+      const isCheckbox = element => element.type === 'checkbox';
+      const isSelect = element => element.type === 'select';
+      const getSelectValues = options => [].reduce.call(options, (values, option) => {
+        return option.selected ? values.concat(option.value) : values;
+      }, []);
+      
+      $(document).ready(function() {
+        $('#btnApprove').click(approve);
+        $('#btnReject').click(reject);
+      });
+    </script>
+    <style>
+      body {
+        padding-top: 20px;
+        padding-bottom: 50px;
+      }
+      label {
+        width: 100%;
+      }
+      label[for=adultassisting], label[for=destination],label[for=comments],label[for=description], label[for=phone], label[for=numadults], label[for=numstudents], label[for=depart], label[for=destaddress], label[for=eatstop], label[for=reststop], label[for=buildcomments],
+         label[for=adultincharge], label[for=tripdate], label[for=leaveschool], label[for=arrivedestination], label[for=leavedestination], label[for=arriveschool], label[for=email], label[for=building], label[for=largebus], label[for=smallbus], label[for=vans], label[for=dayOfWeek]
+      {
+        font-weight: bold;
+        font-size: 1em;
+        color: #424242;
+      }
+      .req { 
+        color: red; 
+      }
+      .req2 {
+        color: red;
+        font-size: 0.8em;
+      }
+    </style>
+  </body>
+</html>

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <!--Import Google Icon Font-->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <title>Field Trip Application</title>
+  </head>
+  
+  <body>
+    <header class="header yellow darken-2 white-text">
+      <div class="container">
+        <div class="row">
+          <div class="col s12">
+            <img src="https://ofhsmath.com/online_forms/images/FieldTripApplication2.png" alt="school banner" class="responsive-img">
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="container">
+      <form class="main" id="formValidate" novalidate="novalidate">
+        <div id="forminner">
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="col s12">
+              <p class="center-align"><span class="req">*</span> Indicates a required field.</p>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="destination" type="text" name="destination" required>
+              <label for="destination">Destination<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m6">
+              <input type="text" id="tripdate" name="tripdate" class="datepicker" required>
+              <label for="tripdate">Date of Trip <span class="req">*</span></label>
+            </div>
+            <div class="alignBox col s6 m3">
+              <span class="req2"><label for="building">Building <span class="req">*</span></label></span>
+              <select id="building" name="building" required>
+                <option disabled selected value>Select...</option>
+                <option value="HS" >High School</option>
+                <option value="MS" >Middle School</option>
+                <option value="IS" >Intermediate School</option>
+                <option value="FL" >Falls-Lenox</option>
+                <option value="ECC" >Early Childhood Center</option>
+              </select>      
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="adultincharge" type="text" name="adultincharge" required>
+              <label for="adultincharge">Teacher/Adult in Charge<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="email" type="email" name="email" required>
+              <label for="email">Adult in Charge Email<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="phone" type="text" name="phone" required>
+              <label for="phone">Phone Number <span class="req2">Format: (xxx) xxx-xxxx</span><span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <textarea id="adultassisting" name="adultassisting" class="materialize-textarea"></textarea>
+              <label for="adultassisting">Other Adults Assisting (enter names one per line)</label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m6">
+              <input id="numadults" type="number" name="numadults" value="1" required>
+              <label for="numadults">Total Number of Adults Riding<span class="req">*</span></label>
+            </div>
+            <div class="input-field col s12 m6">
+              <input id="numstudents" type="number" name="numstudents" value="1" required>
+              <label for="numstudents">Total Number of Students Riding<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="col s12">
+              <p class="left-align">Large Bus = 56 seated 2 per seat<br>
+              Small Bus =  15-20 passenger capacity (with lift and safety securements)<br><br></p>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m4">
+              <input id="largebus" type="number" name="largebus" value="0" required>
+              <label for="largebus">Number of Large Buses<span class="req">*</span></label>
+            </div>
+            <div class="input-field col s12 m4">
+              <input id="smallbus" type="number" name="smallbus" value="0" required>
+              <label for="smallbus">Number of Small Buses<span class="req">*</span></label>
+            </div>
+            <div class="input-field col s12 m4">
+              <input id="vans" type="number" name="vans" value="0" required>
+              <label for="vans">Number of Vans<span class="req">*</span></label>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="col s12">
+              <span class="req2">* Small buses are wheelchair accessible. If wheelchair lift is needed, please call the Transportation Dept.(440) 427-6350.<br>
+              * Van drivers must be van certified prior to driving students in the school van<br><br></span>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="depart" type="text" name="depart" required>
+              <label for="depart">Depart From<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <input id="destaddress" type="text" name="destaddress" required>
+              <label for="destaddress">Destination Full Address<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m6">
+              <input type="text" id="leaveschool" name="leaveschool" class="timepicker" required>
+              <label for="leaveschool">School Departure Time<span class="req">*</span></label>
+            </div>
+            <div class="input-field col s12 m6">
+              <input type="text" id="arrivedestination" name="arrivedestination" class="timepicker" required>
+              <label for="arrivedestination">Estimated Destination Arrival Time<span class="req">*</span></label>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 m6">
+              <input type="text" id="leavedestination" name="leavedestination" class="timepicker" required>
+              <label for="leavedestination">Destination Departure Time<span class="req">*</span></label>
+            </div>
+            <div class="input-field col s12 m6">
+              <input type="text" id="arriveschool" name="arriveschool" class="timepicker" required>
+              <label for="arriveschool">Estimated School Return Arrival Time<span class="req">*</span></label>
+            </div>
+          </div>
+          
+          
+          <div class="row">
+            <div class="input-field">
+              <i class="material-icons prefix"></i>
+              <div class="col s6">
+                <label for="eat">Extra Stop to Eat</label>
+              </div>
+              <div class="col s2">
+                <label>
+                  <input type="radio" value="No" name="eat" checked>
+                  <span>No</span>
+                </label>
+              </div>  
+              <div class="col s2">
+                <label>
+                  <input type="radio" value="Yes" name="eat">
+                  <span>Yes</span>
+                </label>
+              </div> 
+            </div>
+          </div>
+          <div class="row">
+            <div class="input-field">
+              <i class="material-icons prefix"></i>
+              <div class="col s6">
+                <label for="restroom">Extra Stop for Restroom</label>
+              </div>
+              <div class="col s2">
+                <label>
+                  <input type="radio" value="No" name="restroom" checked>
+                  <span>No</span>
+                </label>
+              </div>  
+              <div class="col s2">
+                <label>
+                  <input type="radio" value="Yes" name="restroom">
+                  <span>Yes</span>
+                </label>
+              </div> 
+            </div>
+          </div>
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12">
+              <textarea id="comments" name="comments" class="materialize-textarea"></textarea>
+              <label for="comments">Purpose of trip and comments/special requests.</label>
+            </div>
+          </div>
+          <div id="output"></div>
+          
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="input-field col s12 center-align">
+              <!-- onclick="submitForm(); return false;" -->
+              <button class="waves-effect indigo darken-4 btn submit-btn" id="btnSubmit" type="submit">Submit
+                <i class="material-icons right">send</i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.17.0/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    
+
+    <script>
+      
+      function submitForm(e) {   
+        document.getElementById('btnSubmit').disabled=true;
+        const form = document.getElementsByClassName('main')[0];
+        const data = formToJSON(form.elements);
+        console.log(data);
+      
+        var dataToSend = JSON.stringify(data, null, "  ");
+          
+        google.script.run
+          .withSuccessHandler (onSuccess)
+          .withFailureHandler (onFailure)
+          .withUserObject(this)
+          .submitReport(dataToSend);
+      }
+      function onSuccess() {
+        var div = document.getElementById('output');
+        div.innerHTML = 'Form submission completed.';
+      }
+      function onFailure() {
+        var div = document.getElementById('output');
+        div.innerHTML = 'Something went wrong!';
+      }
+      const formToJSON = (elements) => [].reduce.call(elements, (data, element) => {
+        // Make sure the element has the required properties.
+        if (isValidElement(element) && isValidValue(element)) {
+          if (isCheckbox(element) || isOther(element)) {
+            data[element.name] = (data[element.name] || []).concat(element.value);
+          } else {
+            data[element.name] = element.value;
+          }
+        }
+        
+        return data;
+      }, {});
+      const isOther = element => {
+        return (element.id === 'major15' || element.id === 'action12' || element.id === 'loc9');
+      };
+      const isValidElement = element => {
+        return element.name;
+      };
+      const isValidValue = element => {
+        return (!['checkbox', 'radio'].includes(element.type) || element.checked);
+      };
+      const isCheckbox = element => element.type === 'checkbox';
+      const isSelect = element => element.type === 'select';
+      const getSelectValues = options => [].reduce.call(options, (values, option) => {
+        return option.selected ? values.concat(option.value) : values;
+      }, []);
+      
+      
+      
+      $(document).ready(function() {
+        $('select').formSelect();
+        
+        $('.datepicker').datepicker({
+          autoClose: true,
+          format: 'mmm dd, yyyy',
+        }).on('change', function() {
+          $(this).valid();  // triggers the validation test
+        });
+        $('.timepicker').timepicker({
+          defaultTime: '', // Set default time: 'now', '1:30AM', '16:30'
+          twelvehour: true, // Use AM/PM or 24-hour format
+          autoclose: false, // automatic close timepicker
+        }).on('change', function() {
+          $(this).valid();
+        });;
+        $("input[type=radio]").click(function () {
+          if($(this).prop("checked")) { $(this).valid(); }
+        });
+        $('select').on('change', function() {
+          $(this).valid();  // triggers the validation test
+        });
+        
+        $('select[required]').css({
+          display: 'inline',
+          position: 'absolute',
+          float: 'left',
+          padding: 0,
+          margin: 0,
+          border: '1px solid rgba(255,255,255,0)',
+          height: 0, 
+          width: 0,
+          top: '2em',
+          left: '3em',
+          opacity: 0,
+          pointerEvents: 'none'
+        });
+        $.validator.setDefaults({
+          highlight: function(element, errorClass, validClass) {
+            if (element.tagName === 'SELECT')
+              $(element).closest('.select-wrapper').addClass('invalid');
+            else
+              $(element).removeClass(validClass).addClass(errorClass);
+          },
+          unhighlight: function(element, errorClass, validClass) {
+            if (element.tagName === 'SELECT')
+              $(element).closest('.select-wrapper').removeClass('invalid');
+            else
+              $(element).removeClass(errorClass).addClass(validClass);
+          },
+          errorClass: "invalid form-error",
+          validClass: "valid",
+          
+        });
+        $.validator.addMethod("phone",function(value,element){
+                return this.optional(element) || /((\(\d{3}\) ?)|(\d{3}-))?\d{3}-\d{4}/i.test(value);
+            },"Please enter phone number in correct format.");
+        $("#formValidate").validate({
+          errorElement: 'div',
+          errorPlacement: function (error, element) {
+            var placement = $(element).data('error');
+            if (placement) {
+              $(placement).append(error);
+            } else {
+              error.insertAfter(element).css({"color": "red", "font-size": "0.9em", "text-align": "center"});
+            }
+          },
+          rules: {
+            'destination': "required",
+            'email': {
+              required: true,
+              email: true
+            },
+            'building': "required",
+            'adultincharge': "required",
+            'phone': {
+              required: true,
+              phone: true
+            },
+            'location': "required",
+            'tripdate': {
+              required: true,
+              date: true
+            },
+            'comments': "required",
+            
+          },
+          messages: {
+            'destination': "Please enter destination of your trip.",
+            'email': {
+              required: "Please enter an email address for the adult in charge.",
+              email: "Please enter a valid email."
+            },
+            'building': "Please select a building.",
+            'adultincharge': "Please enter a name for the adult in charge.",
+            'phone': "Please enter a phone number for the adult in charge.",
+            'tripdate': {
+              required: "Please select a date.",
+              date: "Please enter a valid date."
+            },
+            'comments': "Please include the purpose of your trip.",
+          },
+          submitHandler: function(form, event) { 
+            event.preventDefault();
+            submitForm(event);
+          }
+        });
+      });
+    </script>
+    <style>
+      body {
+        padding-top: 20px;
+        padding-bottom: 50px;
+      }
+      div.error .select-wrapper label.invalid{
+        color: red;
+        margin-top: -15px;
+        padding: 0;
+        font-size: 0.9em;
+      }
+      label {
+        width: 100%;
+      }
+      label[for=adultassisting], label[for=destination],label[for=comments],label[for=description], label[for=phone], label[for=numadults], label[for=numstudents], label[for=depart], label[for=destaddress], label[for=eat], label[for=restroom],
+         label[for=adultincharge], label[for=tripdate], label[for=leaveschool], label[for=arrivedestination], label[for=leavedestination], label[for=arriveschool], label[for=email], label[for=building], label[for=largebus], label[for=smallbus], label[for=vans]
+      {
+        font-weight: bold;
+        font-size: 1em;
+        color: #424242;
+      }
+      .req { 
+        color: red; 
+      }
+      .req2 {
+        color: red;
+        font-size: 0.8em;
+      }
+      .checkthebox {
+        display: inline-block;
+        margin: 0 50px 20px 5px;
+      }
+      .alignBox {
+        display: inline-block;
+        margin: -7px 25px 0 0;
+      }
+    </style>
+  </body>
+</html>
