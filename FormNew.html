@@ -364,7 +364,15 @@
                             <label for="destination_address" class="form-label">
                                 Address of Destination <span class="required-indicator">*</span>
                             </label>
-                            <input type="text" class="form-control" id="destination_address" name="destination_address" required maxlength="300" placeholder="Full street address">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="destination_address" name="destination_address" required maxlength="300" placeholder="Full street address">
+                                <button type="button" class="btn btn-outline-primary" id="viewDirectionsBtn" title="View directions on Google Maps">
+                                    <i class="bi bi-map"></i> Directions
+                                </button>
+                            </div>
+                            <div class="help-text">
+                                <i class="bi bi-info-circle"></i> Click "Directions" to view route on Google Maps
+                            </div>
                             <div class="invalid-feedback"></div>
                         </div>
                     </div>
@@ -784,6 +792,32 @@
             // Save draft button
             document.getElementById('saveDraftBtn').addEventListener('click', function() {
                 saveDraft();
+            });
+
+            // Google Maps Directions button
+            document.getElementById('viewDirectionsBtn').addEventListener('click', function() {
+                const departFrom = document.getElementById('depart_from').value;
+                const destinationAddress = document.getElementById('destination_address').value;
+
+                if (!departFrom) {
+                    showAlert('Please select a departure location first.', 'warning');
+                    document.getElementById('depart_from').focus();
+                    return;
+                }
+
+                if (!destinationAddress) {
+                    showAlert('Please enter a destination address first.', 'warning');
+                    document.getElementById('destination_address').focus();
+                    return;
+                }
+
+                // Build Google Maps directions URL
+                const origin = encodeURIComponent(departFrom + ', Olmsted Falls, OH');
+                const destination = encodeURIComponent(destinationAddress);
+                const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+
+                // Open in new tab
+                window.open(mapsUrl, '_blank');
             });
 
             // Form submission

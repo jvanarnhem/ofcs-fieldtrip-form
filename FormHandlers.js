@@ -26,6 +26,13 @@ function submitFieldTripForm(formDataJson) {
 
     var formData = processed.data;
 
+    // Generate Google Maps directions URL if we have both addresses
+    if (formData.depart_from && formData.destination_address) {
+      var origin = encodeURIComponent(formData.depart_from + ', Olmsted Falls, OH');
+      var destination = encodeURIComponent(formData.destination_address);
+      formData.directions_url = 'https://www.google.com/maps/dir/?api=1&origin=' + origin + '&destination=' + destination + '&travelmode=driving';
+    }
+
     // Append to spreadsheet
     var submissionNumber = appendSubmission(formData);
 

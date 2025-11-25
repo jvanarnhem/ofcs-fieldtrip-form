@@ -92,6 +92,11 @@ var FORM_SCHEMA = {
     maxLength: 300,
     label: 'Address of Destination'
   },
+  directions_url: {
+    type: 'url',
+    columnHeader: 'Directions_URL',
+    systemGenerated: true
+  },
   num_students: {
     type: 'number',
     columnHeader: 'Number_of_Students',
