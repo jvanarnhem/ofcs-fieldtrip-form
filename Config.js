@@ -78,13 +78,6 @@ var FORM_SCHEMA = {
   },
 
   // Trip Details
-  grade_level: {
-    type: 'text',
-    columnHeader: 'Grade_Level',
-    required: true,
-    maxLength: 50,
-    label: 'Grade Level(s)'
-  },
   num_students: {
     type: 'number',
     columnHeader: 'Number_of_Students',
@@ -125,22 +118,19 @@ var FORM_SCHEMA = {
     required: true,
     label: 'Time Arriving Back at School'
   },
-
-  // Transportation
-  transportation: {
-    type: 'select',
-    columnHeader: 'Transportation',
+  extra_stop_eat: {
+    type: 'radio',
+    columnHeader: 'Extra_Stop_Eat',
     required: true,
-    label: 'Mode of Transportation',
-    options: ['School Bus', 'Walking', 'Parent/Guardian Vehicles', 'Public Transportation', 'Other']
+    label: 'Extra Stop to Eat',
+    options: ['Yes', 'No']
   },
-  transportation_other: {
-    type: 'text',
-    columnHeader: 'Transportation_Other',
-    required: false,
-    conditionalOn: { field: 'transportation', value: 'Other' },
-    maxLength: 100,
-    label: 'Please Specify Transportation'
+  extra_stop_restroom: {
+    type: 'radio',
+    columnHeader: 'Extra_Stop_Restroom',
+    required: true,
+    label: 'Extra Stop for Restroom',
+    options: ['Yes', 'No']
   },
 
   // Purpose
@@ -151,29 +141,12 @@ var FORM_SCHEMA = {
     maxLength: 1000,
     label: 'Educational Purpose of Trip'
   },
-  curriculum_connection: {
+  comments_requests: {
     type: 'textarea',
-    columnHeader: 'Curriculum_Connection',
-    required: true,
-    maxLength: 500,
-    label: 'Curriculum Connection'
-  },
-
-  // Cost
-  cost_per_student: {
-    type: 'number',
-    columnHeader: 'Cost_Per_Student',
-    required: true,
-    min: 0,
-    step: 0.01,
-    label: 'Cost Per Student ($)'
-  },
-  funding_source: {
-    type: 'text',
-    columnHeader: 'Funding_Source',
+    columnHeader: 'Comments_and_Special_Requests',
     required: false,
-    maxLength: 200,
-    label: 'Funding Source (if applicable)'
+    maxLength: 500,
+    label: 'Comments and Special Requests'
   },
 
   // Approval Fields

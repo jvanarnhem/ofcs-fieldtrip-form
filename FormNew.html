@@ -311,15 +311,7 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="grade_level" class="form-label">
-                                Grade Level(s) <span class="required-indicator">*</span>
-                            </label>
-                            <input type="text" class="form-control" id="grade_level" name="grade_level" required maxlength="50" placeholder="e.g., 3rd Grade, 9-12">
-                            <div class="invalid-feedback"></div>
-                        </div>
-
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-3">
                             <label for="num_students" class="form-label">
                                 Number of Students <span class="required-indicator">*</span>
                             </label>
@@ -327,7 +319,7 @@
                             <div class="invalid-feedback"></div>
                         </div>
 
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-3">
                             <label for="num_adults" class="form-label">
                                 Number of Chaperones <span class="required-indicator">*</span>
                             </label>
@@ -377,32 +369,38 @@
                         </div>
                     </div>
 
-                    <!-- Transportation Section -->
-                    <div class="section-header">
-                        <h2><i class="bi bi-truck"></i> Transportation</h2>
-                    </div>
-
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="transportation" class="form-label">
-                                Mode of Transportation <span class="required-indicator">*</span>
+                            <label class="form-label">
+                                Extra Stop to Eat <span class="required-indicator">*</span>
                             </label>
-                            <select class="form-select" id="transportation" name="transportation" required>
-                                <option value="">Select Transportation...</option>
-                                <option value="School Bus">School Bus</option>
-                                <option value="Walking">Walking</option>
-                                <option value="Parent/Guardian Vehicles">Parent/Guardian Vehicles</option>
-                                <option value="Public Transportation">Public Transportation</option>
-                                <option value="Other">Other</option>
-                            </select>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="extra_stop_eat" id="extra_stop_eat_yes" value="Yes" required>
+                                    <label class="form-check-label" for="extra_stop_eat_yes">Yes</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="extra_stop_eat" id="extra_stop_eat_no" value="No" required>
+                                    <label class="form-check-label" for="extra_stop_eat_no">No</label>
+                                </div>
+                            </div>
                             <div class="invalid-feedback"></div>
                         </div>
 
-                        <div class="col-md-6 mb-3 conditional-field" id="transportation_other_wrapper">
-                            <label for="transportation_other" class="form-label">
-                                Please Specify Transportation <span class="required-indicator">*</span>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                Extra Stop for Restroom <span class="required-indicator">*</span>
                             </label>
-                            <input type="text" class="form-control" id="transportation_other" name="transportation_other" maxlength="100">
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="extra_stop_restroom" id="extra_stop_restroom_yes" value="Yes" required>
+                                    <label class="form-check-label" for="extra_stop_restroom_yes">Yes</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="extra_stop_restroom" id="extra_stop_restroom_no" value="No" required>
+                                    <label class="form-check-label" for="extra_stop_restroom_no">No</label>
+                                </div>
+                            </div>
                             <div class="invalid-feedback"></div>
                         </div>
                     </div>
@@ -425,34 +423,11 @@
 
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label for="curriculum_connection" class="form-label">
-                                Curriculum Connection <span class="required-indicator">*</span>
+                            <label for="comments_requests" class="form-label">
+                                Comments and Special Requests <span class="text-muted">(Optional)</span>
                             </label>
-                            <textarea class="form-control" id="curriculum_connection" name="curriculum_connection" rows="3" required maxlength="500" placeholder="How does this trip connect to your curriculum standards and learning goals?"></textarea>
-                            <div class="help-text">Maximum 500 characters. <span id="curriculumCount">0/500</span></div>
-                            <div class="invalid-feedback"></div>
-                        </div>
-                    </div>
-
-                    <!-- Cost Section -->
-                    <div class="section-header">
-                        <h2><i class="bi bi-currency-dollar"></i> Cost Information</h2>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="cost_per_student" class="form-label">
-                                Cost Per Student ($) <span class="required-indicator">*</span>
-                            </label>
-                            <input type="number" class="form-control" id="cost_per_student" name="cost_per_student" required min="0" step="0.01" placeholder="0.00">
-                            <div class="invalid-feedback"></div>
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label for="funding_source" class="form-label">
-                                Funding Source <span class="text-muted">(Optional)</span>
-                            </label>
-                            <input type="text" class="form-control" id="funding_source" name="funding_source" maxlength="200" placeholder="e.g., General Fund, PTO, Grant">
+                            <textarea class="form-control" id="comments_requests" name="comments_requests" rows="3" maxlength="500" placeholder="Any special requests or additional comments about this trip"></textarea>
+                            <div class="help-text">Maximum 500 characters. <span id="commentsCount">0/500</span></div>
                             <div class="invalid-feedback"></div>
                         </div>
                     </div>
@@ -499,8 +474,8 @@
                 document.getElementById('purposeCount').textContent = this.value.length + '/1000';
             });
 
-            document.getElementById('curriculum_connection').addEventListener('input', function() {
-                document.getElementById('curriculumCount').textContent = this.value.length + '/500';
+            document.getElementById('comments_requests').addEventListener('input', function() {
+                document.getElementById('commentsCount').textContent = this.value.length + '/500';
             });
 
             // Phone number formatting
@@ -514,21 +489,6 @@
                     e.target.value = '(' + value.substring(0, 3) + ') ' + value.substring(3);
                 } else if (value.length > 0) {
                     e.target.value = '(' + value;
-                }
-            });
-
-            // Conditional fields
-            document.getElementById('transportation').addEventListener('change', function() {
-                const otherWrapper = document.getElementById('transportation_other_wrapper');
-                const otherField = document.getElementById('transportation_other');
-
-                if (this.value === 'Other') {
-                    otherWrapper.style.display = 'block';
-                    otherField.required = true;
-                } else {
-                    otherWrapper.style.display = 'none';
-                    otherField.required = false;
-                    otherField.value = '';
                 }
             });
 
