@@ -78,6 +78,20 @@ var FORM_SCHEMA = {
   },
 
   // Trip Details
+  depart_from: {
+    type: 'select',
+    columnHeader: 'Depart_From',
+    required: true,
+    label: 'Depart From',
+    options: ['High School', 'Middle School', 'Intermediate School', 'Florence Lawson Elementary', 'Early Childhood Center']
+  },
+  destination_address: {
+    type: 'text',
+    columnHeader: 'Destination_Address',
+    required: true,
+    maxLength: 300,
+    label: 'Address of Destination'
+  },
   num_students: {
     type: 'number',
     columnHeader: 'Number_of_Students',
@@ -91,6 +105,30 @@ var FORM_SCHEMA = {
     required: true,
     min: 1,
     label: 'Number of Adults/Chaperones'
+  },
+  num_large_buses: {
+    type: 'number',
+    columnHeader: 'Number_of_Large_Buses',
+    required: true,
+    min: 0,
+    label: 'Number of Large Buses',
+    helpText: 'Large Bus = 56 seated, 2 per seat'
+  },
+  num_small_buses: {
+    type: 'number',
+    columnHeader: 'Number_of_Small_Buses',
+    required: true,
+    min: 0,
+    label: 'Number of Small Buses',
+    helpText: 'Small Bus = 15-20 passenger capacity (wheelchair accessible with lift)'
+  },
+  num_vans: {
+    type: 'number',
+    columnHeader: 'Number_of_Vans',
+    required: true,
+    min: 0,
+    label: 'Number of Vans',
+    helpText: 'Van drivers must be van certified prior to driving students'
   },
 
   // Schedule

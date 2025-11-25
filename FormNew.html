@@ -305,6 +305,36 @@
                         </div>
                     </div>
 
+                    <!-- Trip Logistics Section -->
+                    <div class="section-header">
+                        <h2><i class="bi bi-geo-alt"></i> Trip Logistics</h2>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="depart_from" class="form-label">
+                                Depart From <span class="required-indicator">*</span>
+                            </label>
+                            <select class="form-select" id="depart_from" name="depart_from" required>
+                                <option value="">Select Building...</option>
+                                <option value="High School">High School</option>
+                                <option value="Middle School">Middle School</option>
+                                <option value="Intermediate School">Intermediate School</option>
+                                <option value="Florence Lawson Elementary">Florence Lawson Elementary</option>
+                                <option value="Early Childhood Center">Early Childhood Center</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="destination_address" class="form-label">
+                                Address of Destination <span class="required-indicator">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="destination_address" name="destination_address" required maxlength="300" placeholder="Full street address">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
                     <!-- Group Details Section -->
                     <div class="section-header">
                         <h2><i class="bi bi-people"></i> Group Details</h2>
@@ -326,6 +356,45 @@
                             <input type="number" class="form-control" id="num_adults" name="num_adults" required min="1">
                             <div class="invalid-feedback"></div>
                         </div>
+                    </div>
+
+                    <!-- Transportation Needs Section -->
+                    <div class="section-header">
+                        <h2><i class="bi bi-bus-front"></i> Transportation Needs</h2>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="num_large_buses" class="form-label">
+                                Number of Large Buses <span class="required-indicator">*</span>
+                            </label>
+                            <input type="number" class="form-control" id="num_large_buses" name="num_large_buses" required min="0" value="0">
+                            <div class="help-text">Large Bus = 56 seated, 2 per seat</div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="num_small_buses" class="form-label">
+                                Number of Small Buses <span class="required-indicator">*</span>
+                            </label>
+                            <input type="number" class="form-control" id="num_small_buses" name="num_small_buses" required min="0" value="0">
+                            <div class="help-text">15-20 passenger (wheelchair accessible with lift)</div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="num_vans" class="form-label">
+                                Number of Vans <span class="required-indicator">*</span>
+                            </label>
+                            <input type="number" class="form-control" id="num_vans" name="num_vans" required min="0" value="0">
+                            <div class="help-text">Van drivers must be van certified</div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Note:</strong> Small buses are wheelchair accessible. If wheelchair lift is needed, please call the Transportation Dept. (440) 427-6350. Van drivers must be van certified prior to driving students in the school van.
                     </div>
 
                     <!-- Schedule Section -->
