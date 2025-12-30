@@ -10,3 +10,7 @@ README.md
 switch-env.sh
 .DS_Store
 *.log
+Code.js
+forms.html
+buildAdmin.html
+districtAdmin.html

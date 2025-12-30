@@ -12,7 +12,7 @@
 
     <style>
         body {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background: #4a5568;
             min-height: 100vh;
             padding: 20px 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -28,7 +28,7 @@
         }
 
         .review-header {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background: linear-gradient(135deg, #000068 0%, #0d47a1 100%);
             color: white;
             padding: 30px;
             text-align: center;
@@ -54,7 +54,7 @@
         }
 
         .section-header {
-            border-bottom: 3px solid #f093fb;
+            border-bottom: 3px solid #000068;
             padding-bottom: 10px;
             margin-bottom: 25px;
             margin-top: 30px;
@@ -66,7 +66,7 @@
 
         .section-header h2 {
             font-size: 1.5rem;
-            color: #f5576c;
+            color: #000068;
             margin: 0;
             display: flex;
             align-items: center;
@@ -273,10 +273,6 @@
                 </div>
                 <table class="info-table">
                     <tr>
-                        <td>Grade Level(s)</td>
-                        <td id="grade_level">-</td>
-                    </tr>
-                    <tr>
                         <td>Number of Students</td>
                         <td id="num_students">-</td>
                     </tr>
@@ -309,21 +305,6 @@
                     </tr>
                 </table>
 
-                <!-- Transportation -->
-                <div class="section-header">
-                    <h2><i class="bi bi-truck"></i> Transportation</h2>
-                </div>
-                <table class="info-table">
-                    <tr>
-                        <td>Mode of Transportation</td>
-                        <td id="transportation">-</td>
-                    </tr>
-                    <tr id="transportation_other_row" style="display: none;">
-                        <td>Transportation Details</td>
-                        <td id="transportation_other">-</td>
-                    </tr>
-                </table>
-
                 <!-- Educational Purpose -->
                 <div class="section-header">
                     <h2><i class="bi bi-book"></i> Educational Purpose</h2>
@@ -332,25 +313,6 @@
                     <tr>
                         <td>Purpose of Trip</td>
                         <td><div id="purpose" style="white-space: pre-wrap;">-</div></td>
-                    </tr>
-                    <tr>
-                        <td>Curriculum Connection</td>
-                        <td><div id="curriculum_connection" style="white-space: pre-wrap;">-</div></td>
-                    </tr>
-                </table>
-
-                <!-- Cost Information -->
-                <div class="section-header">
-                    <h2><i class="bi bi-currency-dollar"></i> Cost Information</h2>
-                </div>
-                <table class="info-table">
-                    <tr>
-                        <td>Cost Per Student</td>
-                        <td id="cost_per_student">-</td>
-                    </tr>
-                    <tr>
-                        <td>Funding Source</td>
-                        <td id="funding_source">-</td>
                     </tr>
                 </table>
 
@@ -394,6 +356,69 @@
             const loadingOverlay = document.getElementById('loadingOverlay');
             const submissionData = <?!= JSON.stringify(info) ?>;
 
+            // Helper function to format time values
+            function formatTimeDisplay(timeValue) {
+                if (!timeValue || timeValue === '-') return '-';
+
+                // If it's already formatted (contains AM/PM), return as is
+                if (typeof timeValue === 'string' && (timeValue.includes('AM') || timeValue.includes('PM'))) {
+                    return timeValue;
+                }
+
+                // If it's an ISO date string like "1899-12-30T14:00:00.000Z"
+                // This is stored in UTC, but represents local time, so we need to extract the time portion
+                if (typeof timeValue === 'string' && timeValue.includes('T')) {
+                    // Extract just the time part before the 'T' or from the ISO string
+                    const timePart = timeValue.split('T')[1];
+                    if (timePart) {
+                        const timeOnly = timePart.split(':');
+                        let hours = parseInt(timeOnly[0], 10);
+                        const minutes = timeOnly[1];
+                        const ampm = hours >= 12 ? 'PM' : 'AM';
+                        hours = hours % 12;
+                        hours = hours ? hours : 12;
+                        return hours + ':' + minutes + ' ' + ampm;
+                    }
+                }
+
+                // If it's in HH:mm format
+                if (typeof timeValue === 'string' && timeValue.includes(':')) {
+                    const parts = timeValue.split(':');
+                    let hours = parseInt(parts[0], 10);
+                    const minutes = parts[1];
+                    const ampm = hours >= 12 ? 'PM' : 'AM';
+                    hours = hours % 12;
+                    hours = hours ? hours : 12;
+                    return hours + ':' + minutes + ' ' + ampm;
+                }
+
+                return timeValue;
+            }
+
+            // Helper function to format date values
+            function formatDateDisplay(dateValue) {
+                if (!dateValue || dateValue === '-') return '-';
+
+                let date;
+
+                // If it's an ISO string like "2026-01-05T05:00:00.000Z"
+                if (typeof dateValue === 'string' && dateValue.includes('T')) {
+                    // Parse just the date part to avoid timezone shifts
+                    const datePart = dateValue.split('T')[0];
+                    const parts = datePart.split('-');
+                    date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                } else if (typeof dateValue === 'string' && dateValue.includes('-')) {
+                    // If it's YYYY-MM-DD format
+                    const parts = dateValue.split('-');
+                    date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                } else {
+                    date = new Date(dateValue);
+                }
+
+                const months = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'];
+                return months[date.getMonth()] + ' ' + date.getDate() + ', ' + date.getFullYear();
+            }
+
             // Populate form with submission data
             function populateData(data) {
                 // Map data array to fields based on your schema
@@ -402,7 +427,7 @@
 
                 document.getElementById('submission_number').textContent = data.submission_number || data[0] || '-';
                 document.getElementById('destination').textContent = data.destination || '-';
-                document.getElementById('trip_date').textContent = data.trip_date || '-';
+                document.getElementById('trip_date').textContent = formatDateDisplay(data.trip_date);
                 document.getElementById('day_of_week').textContent = data.day_of_week || '-';
                 document.getElementById('building').textContent = data.building || '-';
 
@@ -412,28 +437,15 @@
                 document.getElementById('email').href = 'mailto:' + email;
                 document.getElementById('phone').textContent = data.phone || '-';
 
-                document.getElementById('grade_level').textContent = data.grade_level || '-';
                 document.getElementById('num_students').textContent = data.num_students || '-';
                 document.getElementById('num_adults').textContent = data.num_adults || '-';
 
-                document.getElementById('leave_school').textContent = data.leave_school || '-';
-                document.getElementById('arrive_destination').textContent = data.arrive_destination || '-';
-                document.getElementById('leave_destination').textContent = data.leave_destination || '-';
-                document.getElementById('arrive_school').textContent = data.arrive_school || '-';
-
-                const transportation = data.transportation || '-';
-                document.getElementById('transportation').textContent = transportation;
-
-                if (data.transportation_other) {
-                    document.getElementById('transportation_other_row').style.display = '';
-                    document.getElementById('transportation_other').textContent = data.transportation_other;
-                }
+                document.getElementById('leave_school').textContent = formatTimeDisplay(data.leave_school);
+                document.getElementById('arrive_destination').textContent = formatTimeDisplay(data.arrive_destination);
+                document.getElementById('leave_destination').textContent = formatTimeDisplay(data.leave_destination);
+                document.getElementById('arrive_school').textContent = formatTimeDisplay(data.arrive_school);
 
                 document.getElementById('purpose').textContent = data.purpose || '-';
-                document.getElementById('curriculum_connection').textContent = data.curriculum_connection || '-';
-
-                document.getElementById('cost_per_student').textContent = data.cost_per_student ? '$' + parseFloat(data.cost_per_student).toFixed(2) : '-';
-                document.getElementById('funding_source').textContent = data.funding_source || 'Not specified';
             }
 
             function showAlert(message, type = 'danger') {
@@ -457,12 +469,12 @@
                     }
                 }
 
-                const confirmMessage = action === 'approve'
-                    ? 'Are you sure you want to APPROVE this field trip and forward it to the district administrator?'
-                    : 'Are you sure you want to REJECT this field trip application?';
-
-                if (!confirm(confirmMessage)) {
-                    return;
+                // Only show confirmation for reject, not approve
+                if (action === 'reject') {
+                    const confirmMessage = 'Are you sure you want to REJECT this field trip application?';
+                    if (!confirm(confirmMessage)) {
+                        return;
+                    }
                 }
 
                 const approvalData = {
@@ -530,6 +542,19 @@
             // Populate data on load
             if (submissionData) {
                 populateData(submissionData);
+
+                // Check if already reviewed
+                const status = submissionData.status || '';
+                if (status !== 'Pending Building Approval') {
+                    showAlert(
+                        '<strong>Already Reviewed</strong><br>This application has already been processed. Current status: <strong>' + status + '</strong><br>You cannot make changes to an application that has already been reviewed.',
+                        'warning'
+                    );
+                    // Disable buttons and textarea
+                    document.getElementById('approveBtn').disabled = true;
+                    document.getElementById('rejectBtn').disabled = true;
+                    document.getElementById('comments').disabled = true;
+                }
             } else {
                 showAlert('Error: No submission data found.', 'danger');
             }

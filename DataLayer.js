@@ -4,6 +4,27 @@
  */
 
 /**
+ * Formats a time input (HH:mm) to 12-hour format with AM/PM
+ * @param {string} timeString - Time in 24-hour format (HH:mm)
+ * @returns {string} Time in 12-hour format (h:mm AM/PM)
+ */
+function formatTimeTo12Hour(timeString) {
+  if (!timeString) return '';
+
+  var parts = timeString.split(':');
+  if (parts.length !== 2) return timeString;
+
+  var hours = parseInt(parts[0], 10);
+  var minutes = parts[1];
+
+  var ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // 0 should be 12
+
+  return hours + ':' + minutes + ' ' + ampm;
+}
+
+/**
  * Gets or creates column index mapping for a sheet
  * This enables columns to be reordered without breaking the code
  * @param {Sheet} sheet - The sheet to map
@@ -121,28 +142,54 @@ function rowToObject(row, columnMapping) {
 
 /**
  * Appends a new submission to the sheet
+ * Uses LockService to prevent data loss from simultaneous submissions
  * @param {Object} formData - The form data object
  * @returns {number} The submission number
  */
 function appendSubmission(formData) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
+  // Acquire a lock to prevent simultaneous submissions from interfering
+  var lock = LockService.getScriptLock();
 
-  // Ensure all columns exist
-  ensureColumnsExist(sheet);
+  try {
+    // Wait up to 30 seconds for the lock
+    lock.waitLock(30000);
 
-  // Get column mapping
-  var columnMapping = getColumnMapping(sheet);
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
 
-  // Add system-generated fields
-  var submissionNumber = +new Date();
-  var timestamp = new Date();
-  var tripDate = new Date(formData.trip_date);
+    // Ensure all columns exist
+    ensureColumnsExist(sheet);
+
+    // Get column mapping
+    var columnMapping = getColumnMapping(sheet);
+
+    // Add system-generated fields
+    var submissionNumber = +new Date();
+    var timestamp = new Date();
+
+  // Parse trip date correctly to avoid timezone issues
+  // Input format is YYYY-MM-DD, parse it as local date
+  var dateParts = formData.trip_date.split('-');
+  var tripDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
   var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   formData.submission_number = submissionNumber;
   formData.timestamp = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), 'MM/dd/yyyy HH:mm:ss');
   formData.status = STATUS_VALUES.PENDING_BUILDING;
   formData.day_of_week = days[tripDate.getDay()];
+
+  // Format times to 12-hour format with AM/PM
+  if (formData.leave_school) {
+    formData.leave_school = formatTimeTo12Hour(formData.leave_school);
+  }
+  if (formData.arrive_destination) {
+    formData.arrive_destination = formatTimeTo12Hour(formData.arrive_destination);
+  }
+  if (formData.leave_destination) {
+    formData.leave_destination = formatTimeTo12Hour(formData.leave_destination);
+  }
+  if (formData.arrive_school) {
+    formData.arrive_school = formatTimeTo12Hour(formData.arrive_school);
+  }
 
   // Get building admin name from settings
   var settings = getSettings();
@@ -153,9 +200,33 @@ function appendSubmission(formData) {
   var rowData = objectToRow(formData, columnMapping);
 
   // Append to sheet
+  var newRowIndex = sheet.getLastRow() + 1;
   sheet.appendRow(rowData);
 
-  return submissionNumber;
+  // Force time columns to be plain text to prevent timezone conversion
+  var timeColumns = ['Leave_School', 'Arrive_Destination', 'Leave_Destination', 'Arrive_School'];
+  for (var i = 0; i < timeColumns.length; i++) {
+    var colIndex = columnMapping[timeColumns[i]];
+    if (colIndex !== undefined) {
+      var cell = sheet.getRange(newRowIndex, colIndex + 1);
+      cell.setNumberFormat('@'); // '@' means plain text
+    }
+  }
+
+    // Force spreadsheet to flush all pending changes before returning
+    // This ensures the data is available for immediate reads (like document merge)
+    SpreadsheetApp.flush();
+
+    return submissionNumber;
+
+  } catch (e) {
+    // Log error and re-throw
+    Logger.log('Error in appendSubmission: ' + e);
+    throw e;
+  } finally {
+    // Always release the lock, even if there's an error
+    lock.releaseLock();
+  }
 }
 
 /**

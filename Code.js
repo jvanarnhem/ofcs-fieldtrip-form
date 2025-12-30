@@ -11,7 +11,7 @@ var subSheet = ss.getSheetByName("Submissions");
 var compSheet = ss.getSheetByName("Completed");
 
 // Consider new way to differentiate files.
-function doGet(e) {
+function doGetOld(e) {
   var buildingApproved = e.parameter.buildapprove;
   var idVal = e.parameter.idNum;
   

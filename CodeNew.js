@@ -3,7 +3,7 @@
  * Routes requests and serves appropriate interfaces
  */
 
-var SPREADSHEET_ID = '1Tuas-Xy8RhpPhQljk5j4W-RTW_c4zUd6aFUNDY13WDI';
+var SPREADSHEET_ID = '1vTtLDsUbBeYQVAVlX1658JOjRIigzbFlaY-U0MYViNc';
 var CACHE_PROP = CacheService.getPublicCache();
 var ss = SpreadsheetApp.getActiveSpreadsheet();
 var SETTINGS_SHEET = "_Settings";
@@ -13,11 +13,20 @@ var cache = JSONCacheService();
 var SETTINGS = getSettings();
 
 /**
- * Main doGet handler - routes to appropriate interface
- * @param {Object} e - Event object containing request parameters
- * @returns {HtmlOutput} The appropriate HTML interface
+ * Debug function to output raw HTML
  */
 function doGet(e) {
+  // Debug mode - output raw HTML as text
+  if (e.parameter.debug === 'html') {
+    try {
+      var template = HtmlService.createTemplateFromFile("FormNew.html");
+      var html = template.evaluate().getContent();
+      return ContentService.createTextOutput(html).setMimeType(ContentService.MimeType.TEXT);
+    } catch (error) {
+      return ContentService.createTextOutput("Template error: " + error.message + "\n\nStack: " + error.stack);
+    }
+  }
+
   var buildingApproved = e.parameter.buildapprove;
   var idVal = e.parameter.idNum;
   var template;
@@ -59,14 +68,14 @@ function doGet(e) {
 
     var html = template.evaluate();
     var output = HtmlService.createHtmlOutput(html)
-      .setTitle("OFCS Field Trip Application")
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      .setTitle("OFCS Field Trip Application");
 
     return output;
 
   } catch (error) {
     Logger.log('doGet error: ' + error);
-    return ContentService.createTextOutput("An error occurred. Please try again or contact support.");
+    Logger.log('Error stack: ' + error.stack);
+    return ContentService.createTextOutput("An error occurred: " + error.message + ". Please check the execution logs.");
   }
 }
 
@@ -102,6 +111,54 @@ function update(submissionNumber, statusCode, comments, docURL) {
   }
 
   return updateSubmission(submissionNumber, updates);
+}
+
+/**
+ * Get settings from _Settings sheet
+ */
+function getSettings() {
+  if(CACHE_SETTINGS) {
+    var settings = cache.get("_settings");
+  }
+
+  if(settings == undefined) {
+    var sheet = ss.getSheetByName(SETTINGS_SHEET);
+    var values = sheet.getDataRange().getValues();
+
+    var settings = {};
+    for (var i = 1; i < values.length; i++) {
+      var row = values[i];
+      settings[row[0]] = row[1];
+    }
+
+    cache.put("_settings", settings, SETTINGS_CACHE_TTL);
+  }
+  return settings;
+}
+
+/**
+ * JSON Cache Service helper
+ */
+function JSONCacheService() {
+  var _cache = CacheService.getPublicCache();
+  var _key_prefix = "_json#";
+
+  var get = function(k) {
+    var payload = _cache.get(_key_prefix+k);
+    if(payload !== undefined) {
+      JSON.parse(payload);
+    }
+    return payload
+  }
+
+  var put = function(k, d, t) {
+    _cache.put(_key_prefix+k, JSON.stringify(d), t);
+  }
+
+  return {
+    'get': get,
+    'put': put
+  }
 }
 
 /**

@@ -4,6 +4,38 @@
  */
 
 /**
+ * Formats a date for email display
+ * @param {string|Date} dateValue - Date to format
+ * @returns {string} Formatted date (e.g., "Jan. 5, 2026")
+ */
+function formatEmailDate(dateValue) {
+  if (!dateValue) return '-';
+
+  var date;
+
+  // Handle different date formats
+  if (typeof dateValue === 'string') {
+    if (dateValue.includes('T')) {
+      // ISO string like "2026-01-05T05:00:00.000Z" or just the date part
+      var datePart = dateValue.split('T')[0];
+      var parts = datePart.split('-');
+      date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    } else if (dateValue.includes('-')) {
+      // YYYY-MM-DD format
+      var parts = dateValue.split('-');
+      date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    } else {
+      date = new Date(dateValue);
+    }
+  } else {
+    date = new Date(dateValue);
+  }
+
+  var months = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'];
+  return months[date.getMonth()] + ' ' + date.getDate() + ', ' + date.getFullYear();
+}
+
+/**
  * Sends notification to building administrator when form is submitted
  * @param {number} submissionNumber - Unique submission ID
  * @param {Object} formData - The submission data
@@ -28,10 +60,9 @@ function sendBuildingAdminNotification(submissionNumber, formData, adminEmail, a
   htmlBody += '<table style="width: 100%; border-collapse: collapse;">';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Submission #:</td><td style="padding: 8px;">' + submissionNumber + '</td></tr>';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Destination:</td><td style="padding: 8px;">' + formData.destination + '</td></tr>';
-  htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">' + formData.trip_date + '</td></tr>';
+  htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">' + formatEmailDate(formData.trip_date) + '</td></tr>';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Teacher:</td><td style="padding: 8px;">' + formData.adult_in_charge + '</td></tr>';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Students:</td><td style="padding: 8px;">' + formData.num_students + '</td></tr>';
-  htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Grade Level:</td><td style="padding: 8px;">' + formData.grade_level + '</td></tr>';
   htmlBody += '</table>';
   htmlBody += '</div>';
 
@@ -62,8 +93,9 @@ function sendBuildingAdminNotification(submissionNumber, formData, adminEmail, a
  * Sends confirmation email to the person who submitted the form
  * @param {number} submissionNumber - Unique submission ID
  * @param {Object} formData - The submission data
+ * @param {Document} submissionDoc - Optional initial submission document to attach
  */
-function sendSubmitterConfirmation(submissionNumber, formData) {
+function sendSubmitterConfirmation(submissionNumber, formData, submissionDoc) {
   var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
   htmlBody += '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center;">';
   htmlBody += '<h1 style="margin: 0;">✓ Application Received</h1>';
@@ -78,7 +110,7 @@ function sendSubmitterConfirmation(submissionNumber, formData) {
   htmlBody += '<table style="width: 100%; border-collapse: collapse;">';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Confirmation #:</td><td style="padding: 8px;">' + submissionNumber + '</td></tr>';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Destination:</td><td style="padding: 8px;">' + formData.destination + '</td></tr>';
-  htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">' + formData.trip_date + '</td></tr>';
+  htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">' + formatEmailDate(formData.trip_date) + '</td></tr>';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Number of Students:</td><td style="padding: 8px;">' + formData.num_students + '</td></tr>';
   htmlBody += '</table>';
   htmlBody += '</div>';
@@ -92,6 +124,10 @@ function sendSubmitterConfirmation(submissionNumber, formData) {
   htmlBody += '</ol>';
   htmlBody += '</div>';
 
+  if (submissionDoc) {
+    htmlBody += '<p><strong>Your submission document is attached.</strong> Please print and keep for your records.</p>';
+  }
+
   htmlBody += '<p style="color: #6c757d;">If you have any questions or need to make changes to your application, please contact your building administrator.</p>';
   htmlBody += '</div>';
 
@@ -101,11 +137,20 @@ function sendSubmitterConfirmation(submissionNumber, formData) {
   htmlBody += '</div>';
 
   try {
-    MailApp.sendEmail({
+    var emailOptions = {
       to: formData.email,
       subject: 'CONFIRMATION: Field Trip Application #' + submissionNumber,
       htmlBody: htmlBody
-    });
+    };
+
+    // Attach PDF if document was provided
+    if (submissionDoc) {
+      var pdf = submissionDoc.getAs('application/pdf');
+      pdf.setName(submissionNumber + ' Field Trip Application.pdf');
+      emailOptions.attachments = [pdf];
+    }
+
+    MailApp.sendEmail(emailOptions);
   } catch (error) {
     Logger.log('Error sending submitter confirmation: ' + error);
   }
@@ -135,15 +180,16 @@ function sendDistrictAdminNotification(submissionNumber, formData, buildingComme
   htmlBody += '<table style="width: 100%; border-collapse: collapse;">';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Submission #:</td><td style="padding: 8px;">' + submissionNumber + '</td></tr>';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Destination:</td><td style="padding: 8px;">' + formData.destination + '</td></tr>';
-  htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">' + formData.trip_date + '</td></tr>';
+  htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">' + formatEmailDate(formData.trip_date) + '</td></tr>';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Teacher:</td><td style="padding: 8px;">' + formData.adult_in_charge + '</td></tr>';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Building:</td><td style="padding: 8px;">' + formData.building + '</td></tr>';
   htmlBody += '</table>';
   htmlBody += '</div>';
 
   if (buildingComments) {
+    var buildingAdminName = formData.building_admin || 'Building Administrator';
     htmlBody += '<div style="background: #d1ecf1; border-left: 4px solid #0c5460; padding: 15px; margin: 20px 0;">';
-    htmlBody += '<h3 style="margin-top: 0; color: #0c5460;">Building Administrator Comments</h3>';
+    htmlBody += '<h3 style="margin-top: 0; color: #0c5460;">' + buildingAdminName + ' Comments</h3>';
     htmlBody += '<p style="margin: 0;">' + buildingComments + '</p>';
     htmlBody += '</div>';
   }
@@ -190,7 +236,7 @@ function sendRejectionEmail(formData, comments, rejectedBy) {
   htmlBody += '<h2 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 10px;">Application Details</h2>';
   htmlBody += '<table style="width: 100%; border-collapse: collapse;">';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Destination:</td><td style="padding: 8px;">' + formData.destination + '</td></tr>';
-  htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">' + formData.trip_date + '</td></tr>';
+  htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">' + formatEmailDate(formData.trip_date) + '</td></tr>';
   htmlBody += '</table>';
   htmlBody += '</div>';
 
@@ -240,15 +286,24 @@ function sendFinalApprovalEmail(formData, comments, approvalDoc) {
   htmlBody += '<h2 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 10px;">Trip Details</h2>';
   htmlBody += '<table style="width: 100%; border-collapse: collapse;">';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Destination:</td><td style="padding: 8px;">' + formData.destination + '</td></tr>';
-  htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">' + formData.trip_date + '</td></tr>';
+  htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">' + formatEmailDate(formData.trip_date) + '</td></tr>';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Departure:</td><td style="padding: 8px;">' + formData.leave_school + '</td></tr>';
   htmlBody += '<tr><td style="padding: 8px; font-weight: bold;">Return:</td><td style="padding: 8px;">' + formData.arrive_school + '</td></tr>';
   htmlBody += '</table>';
   htmlBody += '</div>';
 
-  if (comments) {
+  // Show building admin comments if available
+  if (formData.building_comments && formData.building_comments.trim()) {
+    htmlBody += '<div style="background: #d1ecf1; border-left: 4px solid #0c5460; padding: 15px; margin: 20px 0;">';
+    htmlBody += '<h3 style="margin-top: 0; color: #0c5460;">Building Administrator Comments</h3>';
+    htmlBody += '<p style="margin: 0;">' + formData.building_comments + '</p>';
+    htmlBody += '</div>';
+  }
+
+  // Show district admin comments if available
+  if (comments && comments.trim()) {
     htmlBody += '<div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0;">';
-    htmlBody += '<h3 style="margin-top: 0; color: #155724;">Administrator Comments</h3>';
+    htmlBody += '<h3 style="margin-top: 0; color: #155724;">District Administrator Comments</h3>';
     htmlBody += '<p style="margin: 0;">' + comments + '</p>';
     htmlBody += '</div>';
   }
@@ -308,7 +363,7 @@ function sendBusGarageNotification(formData) {
 
   htmlBody += '<table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">';
   htmlBody += '<tr><th style="padding: 10px; background: #f0f0f0; text-align: left; border: 1px solid #ddd;">Field</th><th style="padding: 10px; background: #f0f0f0; text-align: left; border: 1px solid #ddd;">Details</th></tr>';
-  htmlBody += '<tr><td style="padding: 10px; border: 1px solid #ddd;">Date</td><td style="padding: 10px; border: 1px solid #ddd;">' + formData.trip_date + '</td></tr>';
+  htmlBody += '<tr><td style="padding: 10px; border: 1px solid #ddd;">Date</td><td style="padding: 10px; border: 1px solid #ddd;">' + formatEmailDate(formData.trip_date) + '</td></tr>';
   htmlBody += '<tr><td style="padding: 10px; border: 1px solid #ddd;">Destination</td><td style="padding: 10px; border: 1px solid #ddd;">' + formData.destination + '</td></tr>';
   htmlBody += '<tr><td style="padding: 10px; border: 1px solid #ddd;">Building</td><td style="padding: 10px; border: 1px solid #ddd;">' + formData.building + '</td></tr>';
   htmlBody += '<tr><td style="padding: 10px; border: 1px solid #ddd;">Teacher</td><td style="padding: 10px; border: 1px solid #ddd;">' + formData.adult_in_charge + '</td></tr>';
@@ -324,7 +379,7 @@ function sendBusGarageNotification(formData) {
   try {
     MailApp.sendEmail({
       to: settings.BUS_GARAGE_EMAIL,
-      subject: 'Field Trip Transportation Request - ' + formData.trip_date,
+      subject: 'Field Trip Transportation Request - ' + formatEmailDate(formData.trip_date),
       htmlBody: htmlBody
     });
   } catch (error) {

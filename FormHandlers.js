@@ -70,13 +70,11 @@ function submitFieldTripForm(formDataJson) {
     // Send notification email to building admin
     sendBuildingAdminNotification(submissionNumber, formData, adminEmail, adminName);
 
-    // Send confirmation email to submitter
-    sendSubmitterConfirmation(submissionNumber, formData);
-
-    // Generate initial submission PDF
+    // Generate initial submission PDF BEFORE sending confirmation email
+    var initialDoc = null;
     if (settings.INITIAL_SUB_FOLDER_ID && settings.TEMPLATE_INIT_ID) {
       try {
-        var doc = doPreMerge(
+        initialDoc = doPreMerge(
           submissionNumber,
           formData.adult_in_charge,
           settings.INITIAL_SUB_FOLDER_ID,
@@ -88,6 +86,9 @@ function submitFieldTripForm(formDataJson) {
         // Don't fail the whole submission if PDF fails
       }
     }
+
+    // Send confirmation email to submitter with attached PDF
+    sendSubmitterConfirmation(submissionNumber, formData, initialDoc);
 
     return {
       success: true,
@@ -121,7 +122,17 @@ function approveBuildingAdmin(approvalDataJson) {
     if (!submission) {
       return {
         success: false,
-        message: 'Submission not found'
+        message: 'Submission not found or has already been processed'
+      };
+    }
+
+    // Check if already reviewed
+    var currentStatus = submission.dataObject.status;
+    if (currentStatus !== STATUS_VALUES.PENDING_BUILDING) {
+      return {
+        success: false,
+        message: 'This application has already been reviewed. Current status: ' + currentStatus,
+        alreadyReviewed: true
       };
     }
 
@@ -186,7 +197,17 @@ function approveDistrictAdmin(approvalDataJson) {
     if (!submission) {
       return {
         success: false,
-        message: 'Submission not found'
+        message: 'Submission not found or has already been processed'
+      };
+    }
+
+    // Check if already reviewed
+    var currentStatus = submission.dataObject.status;
+    if (currentStatus !== STATUS_VALUES.PENDING_DISTRICT) {
+      return {
+        success: false,
+        message: 'This application has already been reviewed. Current status: ' + currentStatus,
+        alreadyReviewed: true
       };
     }
 
@@ -209,8 +230,20 @@ function approveDistrictAdmin(approvalDataJson) {
       };
 
     } else if (action === 'approve') {
-      // Generate final approval document
+      // Update status to approved first
+      updateSubmission(submissionNumber, {
+        status: STATUS_VALUES.APPROVED,
+        district_comments: comments,
+        district_approval_date: new Date()
+      });
+
+      // Move to completed sheet BEFORE generating document
+      // (so the merge function can find it in the Completed sheet)
+      moveToCompleted(submissionNumber);
+
+      // Generate final approval document AFTER moving to Completed
       var approvalDoc = null;
+      var approvalDocUrl = '';
       if (settings.DESTINATION_FOLDER_ID && settings.TEMPLATE_ID) {
         try {
           approvalDoc = doMerge(
@@ -220,21 +253,25 @@ function approveDistrictAdmin(approvalDataJson) {
             settings.SPREADSHEET_ID,
             settings.TEMPLATE_ID
           );
+          if (approvalDoc) {
+            approvalDocUrl = approvalDoc.getUrl();
+
+            // Update the Completed sheet with the document URL
+            var completedSubmission = findSubmission(submissionNumber, 'Completed');
+            if (completedSubmission) {
+              var completedSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Completed');
+              var columnMapping = getColumnMapping(completedSheet);
+              var urlColIndex = columnMapping['Approval_Document_URL'];
+              if (urlColIndex !== undefined) {
+                completedSheet.getRange(completedSubmission.rowIndex, urlColIndex + 1).setValue(approvalDocUrl);
+              }
+            }
+          }
         } catch (pdfError) {
           Logger.log('PDF generation error: ' + pdfError);
+          Logger.log('Error stack: ' + pdfError.stack);
         }
       }
-
-      // Update status to approved and move to completed
-      updateSubmission(submissionNumber, {
-        status: STATUS_VALUES.APPROVED,
-        district_comments: comments,
-        district_approval_date: new Date(),
-        approval_doc_url: approvalDoc ? approvalDoc.getUrl() : ''
-      });
-
-      // Move to completed sheet
-      moveToCompleted(submissionNumber);
 
       // Send final approval email to submitter
       sendFinalApprovalEmail(submission.dataObject, comments, approvalDoc);
