@@ -44,18 +44,18 @@ function doGet(e) {
       // District Admin Review
       var submission = findSubmission(idVal);
 
-      if (!submission) {
-        return ContentService.createTextOutput("Submission not found or already processed.");
+      if (!submission || submission.dataObject.status !== STATUS_VALUES.PENDING_DISTRICT) {
+        template = HtmlService.createTemplateFromFile("DoneAlready.html");
+      } else {
+        template = HtmlService.createTemplateFromFile("DistrictAdminNew.html");
+        template.info = submission.dataObject;
       }
-
-      template = HtmlService.createTemplateFromFile("DistrictAdminNew.html");
-      template.info = submission.dataObject;
 
     } else if (buildingApproved == 1) {
       // Building Admin Review
       var submission = findSubmission(idVal);
 
-      if (!submission) {
+      if (!submission || submission.dataObject.status !== STATUS_VALUES.PENDING_BUILDING) {
         template = HtmlService.createTemplateFromFile("DoneAlready.html");
       } else {
         template = HtmlService.createTemplateFromFile("BuildingAdminNew.html");
