@@ -14,6 +14,9 @@ node_modules/
 .vscode/
 .idea/
 
+# CodeGraph local index (regenerable, not project source)
+.codegraph/
+
 # Logs
 *.log
 npm-debug.log*

@@ -13,6 +13,14 @@ var cache = JSONCacheService();
 var SETTINGS = getSettings();
 
 /**
+ * Pulls in a shared HTML partial (e.g. vendored CSS) at template-render time.
+ * Used via <?!= include('VendorStyles'); ?> in the HTML templates.
+ */
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+/**
  * Debug function to output raw HTML
  */
 function doGet(e) {
@@ -60,6 +68,14 @@ function doGet(e) {
         status: STATUS_VALUES.REJECTED
       });
       return ContentService.createTextOutput("Application rejected!");
+
+    } else if (e.parameter.checkStatus == '1') {
+      // Teacher self-service status lookup
+      template = HtmlService.createTemplateFromFile("StatusLookup.html");
+
+    } else if (e.parameter.dashboard == '1') {
+      // Admin dashboard of all pending applications
+      template = HtmlService.createTemplateFromFile("AdminDashboard.html");
 
     } else {
       // Main Form

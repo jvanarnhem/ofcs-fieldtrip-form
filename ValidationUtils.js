@@ -158,6 +158,10 @@ function timeToMinutes(timeStr) {
 function validateFormData(formData) {
   var errors = [];
 
+  function addError(field, message) {
+    errors.push({ field: field, message: message });
+  }
+
   for (var key in FORM_SCHEMA) {
     var field = FORM_SCHEMA[key];
 
@@ -170,7 +174,7 @@ function validateFormData(formData) {
 
     // Check required fields
     if (field.required && (!value || value === '')) {
-      errors.push(field.label + ' is required');
+      addError(key, field.label + ' is required');
       continue;
     }
 
@@ -183,40 +187,40 @@ function validateFormData(formData) {
     switch (field.type) {
       case 'email':
         if (!isValidEmail(value)) {
-          errors.push(field.label + ' must be a valid email address');
+          addError(key, field.label + ' must be a valid email address');
         }
         break;
 
       case 'tel':
         if (!isValidPhone(value)) {
-          errors.push(field.label + ' must be a valid phone number');
+          addError(key, field.label + ' must be a valid phone number');
         }
         break;
 
       case 'date':
         if (!isValidDate(value)) {
-          errors.push(field.label + ' must be a valid date');
+          addError(key, field.label + ' must be a valid date');
         } else if (field.validate === 'futureDate' && !isFutureDate(value)) {
-          errors.push(field.label + ' must be a future date');
+          addError(key, field.label + ' must be a future date');
         }
         break;
 
       case 'time':
         if (!isValidTime(value)) {
-          errors.push(field.label + ' must be a valid time (HH:MM)');
+          addError(key, field.label + ' must be a valid time (HH:MM)');
         }
         break;
 
       case 'number':
         var num = parseFloat(value);
         if (isNaN(num)) {
-          errors.push(field.label + ' must be a number');
+          addError(key, field.label + ' must be a number');
         } else {
           if (field.min !== undefined && num < field.min) {
-            errors.push(field.label + ' must be at least ' + field.min);
+            addError(key, field.label + ' must be at least ' + field.min);
           }
           if (field.max !== undefined && num > field.max) {
-            errors.push(field.label + ' must be at most ' + field.max);
+            addError(key, field.label + ' must be at most ' + field.max);
           }
         }
         break;
@@ -224,7 +228,7 @@ function validateFormData(formData) {
       case 'text':
       case 'textarea':
         if (field.maxLength && value.length > field.maxLength) {
-          errors.push(field.label + ' must be less than ' + field.maxLength + ' characters');
+          addError(key, field.label + ' must be less than ' + field.maxLength + ' characters');
         }
         break;
     }
@@ -235,7 +239,7 @@ function validateFormData(formData) {
       var conditionValue = field.conditionalOn.value;
 
       if (formData[conditionField] === conditionValue && field.required && !value) {
-        errors.push(field.label + ' is required when ' + FORM_SCHEMA[conditionField].label + ' is ' + conditionValue);
+        addError(key, field.label + ' is required when ' + FORM_SCHEMA[conditionField].label + ' is ' + conditionValue);
       }
     }
   }
@@ -244,19 +248,19 @@ function validateFormData(formData) {
   // Validate time sequences
   if (formData.leave_school && formData.arrive_destination) {
     if (!isValidTimeSequence(formData.leave_school, formData.arrive_destination)) {
-      errors.push('Arrival at destination must be after leaving school');
+      addError('arrive_destination', 'Arrival at destination must be after leaving school');
     }
   }
 
   if (formData.arrive_destination && formData.leave_destination) {
     if (!isValidTimeSequence(formData.arrive_destination, formData.leave_destination)) {
-      errors.push('Leaving destination must be after arriving at destination');
+      addError('leave_destination', 'Leaving destination must be after arriving at destination');
     }
   }
 
   if (formData.leave_destination && formData.arrive_school) {
     if (!isValidTimeSequence(formData.leave_destination, formData.arrive_school)) {
-      errors.push('Arriving back at school must be after leaving destination');
+      addError('arrive_school', 'Arriving back at school must be after leaving destination');
     }
   }
 

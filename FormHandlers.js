@@ -18,9 +18,11 @@ function submitFieldTripForm(formDataJson) {
     var processed = processFormData(rawData);
 
     if (!processed.success) {
+      var errorMessages = processed.errors.map(function (e) { return e.message; });
       return {
         success: false,
-        message: 'Validation errors: ' + processed.errors.join(', ')
+        message: 'Validation errors: ' + errorMessages.join(', '),
+        errors: processed.errors
       };
     }
 
@@ -324,4 +326,95 @@ function getSubmissionData(submissionNumber) {
     success: true,
     data: submission.dataObject
   };
+}
+
+/**
+ * Gets every submission still awaiting building or district action, for the admin dashboard
+ * @returns {Object} Response object with success status and pending submissions
+ */
+function getPendingSubmissions() {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
+    var columnMapping = getColumnMapping(sheet);
+    var data = sheet.getDataRange().getValues();
+
+    var pendingStatuses = [STATUS_VALUES.PENDING_BUILDING, STATUS_VALUES.PENDING_DISTRICT];
+    var results = [];
+
+    for (var i = 1; i < data.length; i++) {
+      var rowObj = rowToObject(data[i], columnMapping);
+      if (pendingStatuses.indexOf(rowObj.status) !== -1) {
+        results.push(rowObj);
+      }
+    }
+
+    results.sort(function (a, b) {
+      return a.submission_number - b.submission_number;
+    });
+
+    return {
+      success: true,
+      submissions: results
+    };
+
+  } catch (error) {
+    Logger.log('getPendingSubmissions error: ' + error);
+    return {
+      success: false,
+      message: 'An error occurred loading pending applications.'
+    };
+  }
+}
+
+/**
+ * Looks up all applications submitted under a given email address
+ * Searches both the Submissions (pending/rejected) and Completed (approved) sheets
+ * @param {string} email - Teacher's email address used on the application(s)
+ * @returns {Object} Response object with success status and matching submissions
+ */
+function getMySubmissions(email) {
+  try {
+    email = sanitizeInput(String(email || '')).trim().toLowerCase();
+
+    if (!email) {
+      return {
+        success: false,
+        message: 'Please enter your email address.'
+      };
+    }
+
+    var results = [];
+    var sheetNames = ['Submissions', 'Completed'];
+
+    for (var s = 0; s < sheetNames.length; s++) {
+      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetNames[s]);
+      if (!sheet) continue;
+
+      var columnMapping = getColumnMapping(sheet);
+      var data = sheet.getDataRange().getValues();
+
+      for (var i = 1; i < data.length; i++) {
+        var rowObj = rowToObject(data[i], columnMapping);
+        if (rowObj.email && String(rowObj.email).toLowerCase() === email) {
+          results.push(rowObj);
+        }
+      }
+    }
+
+    results.sort(function (a, b) {
+      return b.submission_number - a.submission_number;
+    });
+
+    return {
+      success: true,
+      submissions: results
+    };
+
+  } catch (error) {
+    Logger.log('getMySubmissions error: ' + error);
+    return {
+      success: false,
+      message: 'An error occurred looking up your applications.'
+    };
+  }
 }
