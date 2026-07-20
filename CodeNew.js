@@ -82,6 +82,10 @@ function doGet(e) {
       template = HtmlService.createTemplateFromFile("FormNew.html");
     }
 
+    // Served pages are hosted on a sandboxed content domain, not the /exec URL,
+    // so any in-page links back into the app must be absolute, built from this.
+    template.webAppUrl = ScriptApp.getService().getUrl();
+
     var html = template.evaluate();
     var output = HtmlService.createHtmlOutput(html)
       .setTitle("OFCS Field Trip Application");

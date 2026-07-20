@@ -75,6 +75,7 @@
     </div>
 
     <script>
+        var WEB_APP_URL = '<?!= webAppUrl ?>';
         var allSubmissions = [];
 
         function statusBadgeClass(status) {
@@ -84,7 +85,7 @@
 
         function reviewLink(submission) {
             var stage = submission.status === 'Pending District Approval' ? 2 : 1;
-            return '?idNum=' + encodeURIComponent(submission.submission_number) + '&buildapprove=' + stage;
+            return WEB_APP_URL + '?idNum=' + encodeURIComponent(submission.submission_number) + '&buildapprove=' + stage;
         }
 
         function render() {
