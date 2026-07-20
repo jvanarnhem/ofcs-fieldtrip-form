@@ -117,7 +117,8 @@
             filtered.forEach(function (s) {
                 var tr = document.createElement('tr');
 
-                [s.submission_number, s.building, s.destination, s.trip_date, s.adult_in_charge].forEach(function (val) {
+                var tripDateDisplay = s.trip_date ? new Date(s.trip_date).toLocaleDateString() : '-';
+                [s.submission_number, s.building, s.destination, tripDateDisplay, s.adult_in_charge].forEach(function (val) {
                     var td = document.createElement('td');
                     td.textContent = val || '-';
                     tr.appendChild(td);
@@ -148,16 +149,24 @@
         document.getElementById('buildingFilter').addEventListener('change', render);
 
         google.script.run
-            .withSuccessHandler(function (result) {
-                if (!result.success) {
+            .withSuccessHandler(function (rawResult) {
+                var result;
+                try {
+                    result = JSON.parse(rawResult);
+                } catch (parseError) {
+                    console.error('Failed to parse getPendingSubmissions response:', parseError, rawResult);
+                }
+
+                if (!result || !result.success) {
                     document.getElementById('resultsArea').innerHTML =
-                        '<div class="alert alert-danger">' + (result.message || 'Unable to load pending applications.') + '</div>';
+                        '<div class="alert alert-danger">' + ((result && result.message) || 'Unable to load pending applications.') + '</div>';
                     return;
                 }
-                allSubmissions = result.submissions;
+                allSubmissions = result.submissions || [];
                 render();
             })
-            .withFailureHandler(function () {
+            .withFailureHandler(function (error) {
+                console.error('getPendingSubmissions failed:', error);
                 document.getElementById('resultsArea').innerHTML =
                     '<div class="alert alert-danger">Something went wrong loading pending applications.</div>';
             })

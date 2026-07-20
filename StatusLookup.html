@@ -88,14 +88,15 @@
             btn.textContent = 'Searching...';
 
             google.script.run
-                .withSuccessHandler(function (result) {
+                .withSuccessHandler(function (rawResult) {
                     btn.disabled = false;
                     btn.textContent = 'Check Status';
-                    console.log('getMySubmissions result:', result);
                     try {
+                        var result = JSON.parse(rawResult);
+                        console.log('getMySubmissions result:', result);
                         renderResults(result);
                     } catch (renderError) {
-                        console.error('renderResults error:', renderError);
+                        console.error('renderResults error:', renderError, rawResult);
                         showAlert('Something went wrong displaying your results. Please try again.', 'danger');
                     }
                 })
@@ -151,7 +152,7 @@
                 tr.appendChild(tdDest);
 
                 var tdDate = document.createElement('td');
-                tdDate.textContent = s.trip_date || '-';
+                tdDate.textContent = s.trip_date ? new Date(s.trip_date).toLocaleDateString() : '-';
                 tr.appendChild(tdDate);
 
                 var tdStatus = document.createElement('td');

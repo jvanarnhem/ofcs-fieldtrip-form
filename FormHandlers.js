@@ -352,17 +352,20 @@ function getPendingSubmissions() {
       return a.submission_number - b.submission_number;
     });
 
-    return {
+    // Returned as a JSON string, not a plain object: google.script.run's own object
+    // serialization is unreliable for arrays containing Date values (Sheets auto-converts
+    // date-looking cells to real dates), so we do the serialization ourselves.
+    return JSON.stringify({
       success: true,
       submissions: results
-    };
+    });
 
   } catch (error) {
     Logger.log('getPendingSubmissions error: ' + error);
-    return {
+    return JSON.stringify({
       success: false,
       message: 'An error occurred loading pending applications.'
-    };
+    });
   }
 }
 
@@ -377,10 +380,10 @@ function getMySubmissions(email) {
     email = sanitizeInput(String(email || '')).trim().toLowerCase();
 
     if (!email) {
-      return {
+      return JSON.stringify({
         success: false,
         message: 'Please enter your email address.'
-      };
+      });
     }
 
     var results = [];
@@ -407,16 +410,19 @@ function getMySubmissions(email) {
 
     Logger.log('getMySubmissions: searched for "' + email + '", found ' + results.length + ' match(es)');
 
-    return {
+    // Returned as a JSON string, not a plain object: google.script.run's own object
+    // serialization is unreliable for arrays containing Date values (Sheets auto-converts
+    // date-looking cells to real dates), so we do the serialization ourselves.
+    return JSON.stringify({
       success: true,
       submissions: results
-    };
+    });
 
   } catch (error) {
     Logger.log('getMySubmissions error: ' + error);
-    return {
+    return JSON.stringify({
       success: false,
       message: 'An error occurred looking up your applications.'
-    };
+    });
   }
 }
