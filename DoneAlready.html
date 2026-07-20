@@ -1,20 +1,82 @@
 <!DOCTYPE html>
-<html>
-  <head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base target="_top">
-  </head>
-  <body>
-    <div>
-      <p>You have already processed this request.<br/>
-         You may delete the corresponding email since the link is no longer active.</p>
-      <p>If you have any problems, contact Jeff VanArnhem.</p>
-    </div>
+    <title>Already Processed - Field Trip Application</title>
+
+    <!-- Bootstrap 5 CSS, vendored locally (no external CDN request) -->
+    <?!= include('VendorStyles'); ?>
+
     <style>
-      body {
-        font-weight: bold;
-        font-size: 2em;
-        color: red;
-      }
+        body {
+            background: #4a5568;
+            min-height: 100vh;
+            padding: 20px 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            align-items: center;
+        }
+
+        .done-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .done-header {
+            background: linear-gradient(135deg, #000068 0%, #0d47a1 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .done-header svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 10px;
+        }
+
+        .done-header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .done-body {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .done-footer {
+            padding: 0 40px 30px;
+            text-align: center;
+        }
     </style>
-  </body>
+</head>
+<body>
+    <div class="container" style="max-width: 600px;">
+        <div class="done-container">
+            <div class="done-header">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle" viewBox="0 0 16 16">
+  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/>
+</svg>
+                <h1>Already Processed</h1>
+            </div>
+
+            <div class="done-body">
+                <p class="lead">This field trip application has already been reviewed at this level.</p>
+                <p class="text-muted">You can safely delete the email with this link &mdash; it's no longer active.</p>
+                <a href="<?!= webAppUrl ?>?dashboard=1" class="btn btn-submit mt-3">View Pending Applications</a>
+            </div>
+
+            <div class="done-footer text-muted">
+                <small>If you have any problems, contact Jeff VanArnhem.</small>
+            </div>
+        </div>
+    </div>
+</body>
 </html>
