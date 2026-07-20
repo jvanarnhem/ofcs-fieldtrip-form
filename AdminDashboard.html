@@ -132,6 +132,7 @@
                 var actionTd = document.createElement('td');
                 var link = document.createElement('a');
                 link.href = reviewLink(s);
+                link.target = '_top';
                 link.className = 'btn btn-sm btn-outline-primary';
                 link.textContent = 'Review';
                 actionTd.appendChild(link);
