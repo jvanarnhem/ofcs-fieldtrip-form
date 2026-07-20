@@ -405,6 +405,8 @@ function getMySubmissions(email) {
       return b.submission_number - a.submission_number;
     });
 
+    Logger.log('getMySubmissions: searched for "' + email + '", found ' + results.length + ' match(es)');
+
     return {
       success: true,
       submissions: results

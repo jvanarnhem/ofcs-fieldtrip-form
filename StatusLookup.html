@@ -91,11 +91,18 @@
                 .withSuccessHandler(function (result) {
                     btn.disabled = false;
                     btn.textContent = 'Check Status';
-                    renderResults(result);
+                    console.log('getMySubmissions result:', result);
+                    try {
+                        renderResults(result);
+                    } catch (renderError) {
+                        console.error('renderResults error:', renderError);
+                        showAlert('Something went wrong displaying your results. Please try again.', 'danger');
+                    }
                 })
-                .withFailureHandler(function () {
+                .withFailureHandler(function (error) {
                     btn.disabled = false;
                     btn.textContent = 'Check Status';
+                    console.error('getMySubmissions failed:', error);
                     showAlert('Something went wrong looking up your applications. Please try again.', 'danger');
                 })
                 .getMySubmissions(email);
@@ -112,12 +119,14 @@
             var area = document.getElementById('resultsArea');
             area.innerHTML = '';
 
-            if (!result.success) {
-                showAlert(result.message || 'Unable to look up applications.', 'danger');
+            if (!result || !result.success) {
+                showAlert((result && result.message) || 'Unable to look up applications.', 'danger');
                 return;
             }
 
-            if (result.submissions.length === 0) {
+            var submissions = result.submissions || [];
+
+            if (submissions.length === 0) {
                 var none = document.createElement('p');
                 none.className = 'text-muted mt-3';
                 none.textContent = 'No applications found for that email address.';
@@ -130,7 +139,7 @@
             table.innerHTML = '<thead><tr><th>#</th><th>Destination</th><th>Trip Date</th><th>Status</th></tr></thead>';
 
             var tbody = document.createElement('tbody');
-            result.submissions.forEach(function (s) {
+            submissions.forEach(function (s) {
                 var tr = document.createElement('tr');
 
                 var tdNum = document.createElement('td');
