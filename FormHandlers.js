@@ -279,7 +279,7 @@ function approveDistrictAdmin(approvalDataJson) {
       sendFinalApprovalEmail(submission.dataObject, comments, approvalDoc);
 
       // Send notification to bus garage if applicable
-      if (submission.dataObject.transportation === 'School Bus' && settings.BUS_GARAGE_EMAIL) {
+      if (submission.dataObject.transportation === 'School Bus' && settings.FINAL_EMAIL) {
         sendBusGarageNotification(submission.dataObject);
       }
 

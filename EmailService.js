@@ -44,7 +44,7 @@ function formatEmailDate(dateValue) {
  */
 function sendBuildingAdminNotification(submissionNumber, formData, adminEmail, adminName) {
   var approvalUrl = ScriptApp.getService().getUrl() +
-    '?idNum=' + submissionNumber + '&buildapprove=1';
+    '?idNum=' + submissionNumber + '&action=buildingReview';
 
   var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
   htmlBody += '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center;">';
@@ -165,7 +165,7 @@ function sendSubmitterConfirmation(submissionNumber, formData, submissionDoc) {
  */
 function sendDistrictAdminNotification(submissionNumber, formData, buildingComments, districtEmail) {
   var approvalUrl = ScriptApp.getService().getUrl() +
-    '?idNum=' + submissionNumber + '&buildapprove=2';
+    '?idNum=' + submissionNumber + '&action=districtReview';
 
   var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
   htmlBody += '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center;">';
@@ -353,7 +353,7 @@ function sendFinalApprovalEmail(formData, comments, approvalDoc) {
 function sendBusGarageNotification(formData) {
   var settings = getSettings();
 
-  if (!settings.BUS_GARAGE_EMAIL) {
+  if (!settings.FINAL_EMAIL) {
     return; // No bus garage email configured
   }
 
@@ -378,7 +378,7 @@ function sendBusGarageNotification(formData) {
 
   try {
     MailApp.sendEmail({
-      to: settings.BUS_GARAGE_EMAIL,
+      to: settings.FINAL_EMAIL,
       subject: 'Field Trip Transportation Request - ' + formatEmailDate(formData.trip_date),
       htmlBody: htmlBody
     });

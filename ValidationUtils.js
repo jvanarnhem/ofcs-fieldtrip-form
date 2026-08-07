@@ -153,9 +153,11 @@ function timeToMinutes(timeStr) {
 /**
  * Validates form data against schema
  * @param {Object} formData - The form data to validate
+ * @param {Object} options - Optional flags. { allowPastTripDate: true } skips the futureDate check
  * @returns {Object} Object with isValid boolean and errors array
  */
-function validateFormData(formData) {
+function validateFormData(formData, options) {
+  options = options || {};
   var errors = [];
 
   function addError(field, message) {
@@ -200,7 +202,7 @@ function validateFormData(formData) {
       case 'date':
         if (!isValidDate(value)) {
           addError(key, field.label + ' must be a valid date');
-        } else if (field.validate === 'futureDate' && !isFutureDate(value)) {
+        } else if (field.validate === 'futureDate' && !options.allowPastTripDate && !isFutureDate(value)) {
           addError(key, field.label + ' must be a future date');
         }
         break;
@@ -245,22 +247,13 @@ function validateFormData(formData) {
   }
 
   // Custom cross-field validations
-  // Validate time sequences
-  if (formData.leave_school && formData.arrive_destination) {
-    if (!isValidTimeSequence(formData.leave_school, formData.arrive_destination)) {
-      addError('arrive_destination', 'Arrival at destination must be after leaving school');
-    }
-  }
+  // Validate time sequences: each field in TIME_SEQUENCE_FIELDS must be after the previous one
+  for (var i = 1; i < TIME_SEQUENCE_FIELDS.length; i++) {
+    var prevKey = TIME_SEQUENCE_FIELDS[i - 1];
+    var curKey = TIME_SEQUENCE_FIELDS[i];
 
-  if (formData.arrive_destination && formData.leave_destination) {
-    if (!isValidTimeSequence(formData.arrive_destination, formData.leave_destination)) {
-      addError('leave_destination', 'Leaving destination must be after arriving at destination');
-    }
-  }
-
-  if (formData.leave_destination && formData.arrive_school) {
-    if (!isValidTimeSequence(formData.leave_destination, formData.arrive_school)) {
-      addError('arrive_school', 'Arriving back at school must be after leaving destination');
+    if (formData[prevKey] && formData[curKey] && !isValidTimeSequence(formData[prevKey], formData[curKey])) {
+      addError(curKey, FORM_SCHEMA[curKey].label + ' must be after ' + FORM_SCHEMA[prevKey].label.toLowerCase());
     }
   }
 
@@ -303,14 +296,15 @@ function sanitizeFormData(formData) {
 /**
  * Complete validation and sanitization pipeline
  * @param {Object} formData - Raw form data
+ * @param {Object} options - Optional flags passed through to validateFormData
  * @returns {Object} Object with success, data (if valid), and errors (if invalid)
  */
-function processFormData(formData) {
+function processFormData(formData, options) {
   // First sanitize
   var sanitized = sanitizeFormData(formData);
 
   // Then validate
-  var validation = validateFormData(sanitized);
+  var validation = validateFormData(sanitized, options);
 
   if (validation.isValid) {
     return {

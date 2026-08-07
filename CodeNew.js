@@ -7,7 +7,7 @@ var SPREADSHEET_ID = '1vTtLDsUbBeYQVAVlX1658JOjRIigzbFlaY-U0MYViNc';
 var CACHE_PROP = CacheService.getPublicCache();
 var ss = SpreadsheetApp.getActiveSpreadsheet();
 var SETTINGS_SHEET = "_Settings";
-var CACHE_SETTINGS = false;
+var CACHE_SETTINGS = true;
 var SETTINGS_CACHE_TTL = 900;
 var cache = JSONCacheService();
 var SETTINGS = getSettings();
@@ -35,51 +35,62 @@ function doGet(e) {
     }
   }
 
-  var buildingApproved = e.parameter.buildapprove;
+  var action = e.parameter.action;
   var idVal = e.parameter.idNum;
   var template;
 
+  // Emailed review links carry ?action=<key> instead of magic numbers;
+  // each entry maps the pending status to check against the template to render.
+  var REVIEW_ACTIONS = {
+    buildingReview: {
+      pendingStatus: STATUS_VALUES.PENDING_BUILDING,
+      templateFile: "BuildingAdminNew.html"
+    },
+    districtReview: {
+      pendingStatus: STATUS_VALUES.PENDING_DISTRICT,
+      templateFile: "DistrictAdminNew.html"
+    }
+  };
+
   try {
-    if (buildingApproved == 2) {
-      // District Admin Review
-      var submission = findSubmission(idVal);
-
-      if (!submission || submission.dataObject.status !== STATUS_VALUES.PENDING_DISTRICT) {
-        template = HtmlService.createTemplateFromFile("DoneAlready.html");
-      } else {
-        template = HtmlService.createTemplateFromFile("DistrictAdminNew.html");
-        template.info = submission.dataObject;
-      }
-
-    } else if (buildingApproved == 1) {
-      // Building Admin Review
-      var submission = findSubmission(idVal);
-
-      if (!submission || submission.dataObject.status !== STATUS_VALUES.PENDING_BUILDING) {
-        template = HtmlService.createTemplateFromFile("DoneAlready.html");
-      } else {
-        template = HtmlService.createTemplateFromFile("BuildingAdminNew.html");
-        template.info = submission.dataObject;
-      }
-
-    } else if (buildingApproved == 0) {
+    if (action === 'reject') {
       // Quick reject (legacy support)
       updateSubmission(idVal, {
         status: STATUS_VALUES.REJECTED
       });
       return ContentService.createTextOutput("Application rejected!");
 
+    } else if (REVIEW_ACTIONS.hasOwnProperty(action)) {
+      var reviewAction = REVIEW_ACTIONS[action];
+      var submission = findSubmission(idVal);
+
+      if (!submission || submission.dataObject.status !== reviewAction.pendingStatus) {
+        template = HtmlService.createTemplateFromFile("DoneAlready.html");
+      } else {
+        template = HtmlService.createTemplateFromFile(reviewAction.templateFile);
+        template.info = submission.dataObject;
+      }
+
     } else if (e.parameter.checkStatus == '1') {
       // Teacher self-service status lookup
       template = HtmlService.createTemplateFromFile("StatusLookup.html");
 
     } else if (e.parameter.dashboard == '1') {
-      // Admin dashboard of all pending applications
-      template = HtmlService.createTemplateFromFile("AdminDashboard.html");
+      // Admin dashboard - role is derived from the signed-in Google account, never from a URL param
+      var dashboardCtx = getAdminContext(Session.getActiveUser().getEmail());
+
+      if (!dashboardCtx.isAdmin) {
+        template = HtmlService.createTemplateFromFile("NotAuthorized.html");
+      } else {
+        template = HtmlService.createTemplateFromFile("AdminDashboardNew.html");
+        template.ctx = dashboardCtx;
+      }
 
     } else {
       // Main Form
       template = HtmlService.createTemplateFromFile("FormNew.html");
+      template.formFields = getUserFormFields();
+      template.timeSequence = TIME_SEQUENCE_FIELDS;
     }
 
     // Served pages are hosted on a sandboxed content domain, not the /exec URL,
@@ -165,19 +176,24 @@ function JSONCacheService() {
 
   var get = function(k) {
     var payload = _cache.get(_key_prefix+k);
-    if(payload !== undefined) {
-      JSON.parse(payload);
+    if(payload === null || payload === undefined) {
+      return undefined;
     }
-    return payload
+    return JSON.parse(payload);
   }
 
   var put = function(k, d, t) {
     _cache.put(_key_prefix+k, JSON.stringify(d), t);
   }
 
+  var remove = function(k) {
+    _cache.remove(_key_prefix+k);
+  }
+
   return {
     'get': get,
-    'put': put
+    'put': put,
+    'remove': remove
   }
 }
 

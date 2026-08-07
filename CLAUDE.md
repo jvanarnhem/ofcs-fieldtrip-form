@@ -72,13 +72,7 @@ Google Apps Script web app (bound to a Google Sheet) that runs the Olmsted Falls
 
 ## Critical: which files are actually live
 
-This repo went through an in-place rewrite, and the "new" files are the ones actually deployed — the plain-named files are legacy backups kept for reference/git history only. **`.claspignore` is the source of truth**, not filenames:
-
-```
-Code.js, forms.html, buildAdmin.html, districtAdmin.html   ← NOT pushed (legacy, read-only reference)
-```
-
-Everything else in the repo root **is** pushed via `clasp push` and is live:
+This repo went through an in-place rewrite. The original pre-rewrite files (`Code.js`, `forms.html`, `buildAdmin.html`, `districtAdmin.html`) and an unused scratch template (`FormTest.html`) have been deleted — they were fully superseded, kept no unique behavior, and were only ever excluded from `clasp push` via `.claspignore` (also cleaned up accordingly). Everything in the repo root now **is** pushed via `clasp push` and is live:
 
 | Active file | Role |
 |---|---|
@@ -90,20 +84,36 @@ Everything else in the repo root **is** pushed via `clasp push` and is live:
 | `EmailService.js` | All HTML email bodies (submission, approval, rejection notifications). |
 | `Merge.js` / `PreMerge.js` | Google Doc template merge — `doMerge` (final approved doc) / `doPreMerge` (initial submission receipt). Placeholder syntax: `[Column_Header]` in the template doc, matched against sheet header row. |
 | `CalendarAdd.js` | `addToCalendar` — adds the trip to a named Calendar. |
-| `FormNew.html`, `BuildingAdminNew.html`, `DistrictAdminNew.html`, `DoneAlready.html`, `FormTest.html` | Bootstrap 5 frontends (dark blue / pink / blue themed respectively). |
+| `AdminAuth.js` | `_Admins` roster lookup (`getAdminContext`, `getDashboardContext`) and the `canActOnBuildingStage`/`canActOnDistrictStage` authorization guards used by every dashboard RPC. |
+| `AdminDashboardHandlers.js` | Dashboard RPCs for the Pending/History tabs: `getPendingForMe`, `getHistory`, `bulkProcessSubmissions`, `adminCreateSubmission`, `adminEditSubmission`, `adminPrintSubmission`. |
+| `SettingsHandlers.js` | Dashboard RPCs for the Settings tab: `getSettingsForDashboard`/`saveSettings` (`_Settings` sheet, whitelisted keys only) and `getAdminsRosterForDashboard`/`addAdminRow`/`setAdminRowActive` (`_Admins` roster). |
+| `FormNew.html`, `BuildingAdminNew.html`, `DistrictAdminNew.html`, `DoneAlready.html` | Bootstrap 5 frontends (dark blue / pink / blue themed respectively). |
+| `AdminDashboardNew.html` | The Admin/Super-Admin Dashboard — Pending, History, and Settings tabs, role-adaptive from a single page. Routed at `?dashboard=1`. |
+| `NotAuthorized.html` | Shown at `?dashboard=1` to a signed-in visitor with no `_Admins` row. |
 
 When asked to "update the form" or "fix the admin page," edit the `*New.html` / `*New.js` files, not the legacy ones, unless told otherwise.
 
-## Known inconsistency (do not silently "fix" — confirm with user first)
+## Known inconsistencies (do not silently "fix" — confirm with user first)
 
-`CalendarAdd.js`'s `addToCalendar(data3, name, docURL)` still expects the **old** flat field names (`data3['tripdate']`, `data3['subNum']`, `data3['adultincharge']`, `data3['leaveschool']`) and 3 arguments. But `FormHandlers.js` calls it as `addToCalendar(submission.dataObject)` — one argument, using the **new** `FORM_SCHEMA` keys (`trip_date`, `destination`, `leave_school`, etc.). This means calendar events are currently created with `undefined` values for name/dates. If asked to touch calendar integration, flag this mismatch rather than assuming which side is correct.
+- `CalendarAdd.js`'s `addToCalendar(data3, name, docURL)` still expects the **old** flat field names (`data3['tripdate']`, `data3['subNum']`, `data3['adultincharge']`, `data3['leaveschool']`) and 3 arguments. But `FormHandlers.js` calls it as `addToCalendar(submission.dataObject)` — one argument, using the **new** `FORM_SCHEMA` keys (`trip_date`, `destination`, `leave_school`, etc.). This means calendar events are currently created with `undefined` values for name/dates. If asked to touch calendar integration, flag this mismatch rather than assuming which side is correct.
+- Compounding the above: `FormHandlers.js`'s district-approval flow only calls `addToCalendar` at all if `settings.CALENDAR_ID` is truthy. The real `_Settings` sheet has a key named `CALENDAR_NAME`, not `CALENDAR_ID` — so `settings.CALENDAR_ID` is always `undefined` and the calendar branch never even runs today, on top of the argument bug above.
+- ~~`EmailService.js`'s `sendBusGarageNotification` reads `settings.BUS_GARAGE_EMAIL`~~ — resolved: `FINAL_EMAIL` *is* the bus garage address (confirmed with user); `BUS_GARAGE_EMAIL` was never a real `_Settings` key. `EmailService.js` and `FormHandlers.js` now read `settings.FINAL_EMAIL`.
 
 ## Data model
 
 - `Config.js`'s `FORM_SCHEMA` object is the single source of truth: field key → `{ type, columnHeader, required, label, ... }`. Sheet columns are matched **by header text**, not position, so column reordering in the sheet is safe.
-- Status workflow lives in `STATUS_VALUES` (`Config.js`): `Pending Building Approval` → `Pending District Approval` → `Approved`/`Rejected`.
+- Status workflow lives in `STATUS_VALUES` (`Config.js`): `Pending Building Approval` → `Pending District Approval` → `Approved`/`Rejected`. Note `Rejected` rows never move to `Completed` — `moveToCompleted()` is only ever called on district approval, never on rejection — so anything scanning history/rejections by status must check both `Submissions` and `Completed`.
 - Submissions live in the `Submissions` sheet while pending, then `moveToCompleted()` copies the row to `Completed` on final approval.
-- Runtime config (admin emails per building, template/folder IDs, calendar name) lives in the `_Settings` sheet, loaded once per execution via `getSettings()`.
+- Runtime config (admin emails per building, template/folder IDs, calendar name) lives in the `_Settings` sheet, loaded via `getSettings()` (`CodeNew.js`). `CACHE_SETTINGS` is `true` — reads are cached for `SETTINGS_CACHE_TTL` (900s) via `JSONCacheService`. The only writer is `SettingsHandlers.js`'s `saveSettings()`, which calls `cache.remove('_settings')` after every write — **any new code path that writes to `_Settings` directly (bypassing `saveSettings`) must also invalidate that cache key**, or callers will keep seeing the pre-write value for up to 15 minutes.
+- `_Admins` sheet is the dashboard's access-control roster — separate from `_Settings`, not merged into it (merging would mean rewriting `FormHandlers.js`'s existing per-building email lookup, a real behavior-change risk for no gain). Columns: `Email`, `Role` (`building`/`district`/`super`), `Building` (only meaningful for `role=building`), `Name`, `Active`. One row per (person, role-at-a-building) grant — someone covering two buildings, or holding two roles, gets two rows. Looked up via `AdminAuth.js`'s `getAdminContext(email)`.
+
+## Admin Dashboard (`?dashboard=1`)
+
+- Identity comes from `Session.getActiveUser().getEmail()` — no separate login. This only works because the web app is deployed for "Anyone within domain," so the visitor is already Google-authenticated by the time `doGet` runs.
+- `doGet` (`CodeNew.js`) looks up the visitor in `_Admins` and serves `AdminDashboardNew.html` (role embedded server-side as `ctx`) or `NotAuthorized.html`. But **the real authorization boundary is the RPC layer, not this routing check** — every function in `AdminDashboardHandlers.js`/`SettingsHandlers.js` independently calls `getDashboardContext()` and re-derives permissions from the sheet, since a client-supplied building/role/status can't be trusted.
+- Role rules: a plain `building` admin only sees/acts on their own building's building-stage rows; `district` (and `super`, which always implies `district`) can act on any building's district-stage rows; only `super` can act on building-stage rows outside their own building, create/edit/print trips directly, or manage the full `_Admins` roster. A plain building admin can *add* an admin to their own building but can't edit or deactivate an existing grant (`setAdminRowActive` requires `isSuper||isDistrict`).
+- Bulk approve/reject (`bulkProcessSubmissions`) delegates each row to the existing single-item `approveBuildingAdmin`/`approveDistrictAdmin` rather than duplicating their email/doc-merge/calendar side effects — capped at 20 rows per call (tunable, not a hard requirement) since `doMerge` per row is the expensive step against Apps Script's 6-minute execution limit.
+- The emailed-link approval pages (`?idNum=...&buildapprove=1|2`) are **intentionally still unauthenticated** — that's a separate, larger decision (would break the link-based flow for anyone not yet in `_Admins`) and hasn't been made.
 
 ## Environments (dev vs prod) — be careful here
 

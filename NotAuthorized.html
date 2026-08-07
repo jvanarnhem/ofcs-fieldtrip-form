@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base target="_top">
+    <title>Not Authorized - Field Trip Application</title>
+
+    <!-- Bootstrap 5 CSS, vendored locally (no external CDN request) -->
+    <?!= include('VendorStyles'); ?>
+
+    <style>
+        body {
+            background: #4a5568;
+            min-height: 100vh;
+            padding: 20px 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            align-items: center;
+        }
+
+        .done-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .done-header {
+            background: linear-gradient(135deg, #000068 0%, #0d47a1 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .done-header svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 10px;
+        }
+
+        .done-header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .done-body {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .done-footer {
+            padding: 0 40px 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width: 600px;">
+        <div class="done-container">
+            <div class="done-header">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-lock" viewBox="0 0 16 16">
+  <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/>
+</svg>
+                <h1>Not Authorized</h1>
+            </div>
+
+            <div class="done-body">
+                <p class="lead">This dashboard is restricted to approved building, district, and super admins.</p>
+                <p class="text-muted">If you believe you should have access, contact Jeff VanArnhem to be added to the admin roster.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

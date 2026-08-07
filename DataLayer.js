@@ -272,17 +272,19 @@ function findSubmission(submissionNumber, sheetName) {
  * Updates a submission's status and other fields
  * @param {number} submissionNumber - The submission to update
  * @param {Object} updates - Object containing fields to update
+ * @param {string} sheetName - Name of sheet the submission lives in (default: 'Submissions')
  * @returns {boolean} Success status
  */
-function updateSubmission(submissionNumber, updates) {
-  var submission = findSubmission(submissionNumber);
+function updateSubmission(submissionNumber, updates, sheetName) {
+  sheetName = sheetName || 'Submissions';
+  var submission = findSubmission(submissionNumber, sheetName);
 
   if (!submission) {
-    Logger.log('Submission not found: ' + submissionNumber);
+    Logger.log('Submission not found: ' + submissionNumber + ' in ' + sheetName);
     return false;
   }
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
   var columnMapping = getColumnMapping(sheet);
 
   // Update each field

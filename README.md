@@ -62,12 +62,7 @@ clasp pull
 
 ### 2. Make Changes
 
-Edit your files in VS Code:
-- [Code.js](Code.js) - Main application logic
-- [forms.html](forms.html) - Form interface
-- [buildAdmin.html](buildAdmin.html) - Building admin interface
-- [districtAdmin.html](districtAdmin.html) - District admin interface
-- Other files as needed
+Edit your files in VS Code. See `CLAUDE.md`'s "which files are actually live" table for the current active file list (`CodeNew.js`, `Config.js`, `FormNew.html`, etc.).
 
 ### 3. Test in Development
 
@@ -131,17 +126,7 @@ git checkout dev
 
 ## 📦 Project Files
 
-### JavaScript Files
-- [Code.js](Code.js) - Main doGet/doPost handlers and core logic
-- [CalendarAdd.js](CalendarAdd.js) - Calendar integration
-- [Merge.js](Merge.js) - Data merging functionality
-- [PreMerge.js](PreMerge.js) - Pre-merge processing
-
-### HTML Files
-- [forms.html](forms.html) - Main form interface
-- [buildAdmin.html](buildAdmin.html) - Building-level admin panel
-- [districtAdmin.html](districtAdmin.html) - District-level admin panel
-- [DoneAlready.html](DoneAlready.html) - Completion message
+See `CLAUDE.md`'s "which files are actually live" table for the current file-by-file breakdown.
 
 ### Configuration
 - [appsscript.json](appsscript.json) - Apps Script manifest

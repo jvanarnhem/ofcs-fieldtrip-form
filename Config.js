@@ -32,14 +32,18 @@ var FORM_SCHEMA = {
     columnHeader: 'Destination',
     required: true,
     maxLength: 200,
-    label: 'Destination'
+    label: 'Destination',
+    section: 'Trip Information',
+    col: 12
   },
   trip_date: {
     type: 'date',
     columnHeader: 'Trip_Date',
     required: true,
     label: 'Date of Trip',
-    validate: 'futureDate'
+    validate: 'futureDate',
+    section: 'Trip Information',
+    col: 6
   },
   day_of_week: {
     type: 'text',
@@ -51,7 +55,16 @@ var FORM_SCHEMA = {
     columnHeader: 'Building',
     required: true,
     label: 'Building',
-    options: ['HS', 'MS', 'IS', 'FL', 'ECC']
+    options: ['HS', 'MS', 'IS', 'FL', 'ECC'],
+    optionLabels: {
+      HS: 'High School',
+      MS: 'Middle School',
+      IS: 'Intermediate School',
+      FL: 'Florence Lawson Elementary',
+      ECC: 'Early Childhood Center'
+    },
+    section: 'Trip Information',
+    col: 6
   },
 
   // Contact Information
@@ -60,21 +73,28 @@ var FORM_SCHEMA = {
     columnHeader: 'Teacher_Adult_in_Charge',
     required: true,
     maxLength: 100,
-    label: 'Teacher/Adult in Charge'
+    label: 'Teacher/Adult in Charge',
+    section: 'Contact Information',
+    col: 12
   },
   email: {
     type: 'email',
     columnHeader: 'Email',
     required: true,
     label: 'Email Address',
-    validate: 'email'
+    validate: 'email',
+    section: 'Contact Information',
+    col: 6
   },
   phone: {
     type: 'tel',
     columnHeader: 'Phone_Number',
     required: true,
     label: 'Phone Number',
-    validate: 'phone'
+    validate: 'phone',
+    placeholder: '(XXX) XXX-XXXX',
+    section: 'Contact Information',
+    col: 6
   },
 
   // Trip Details
@@ -83,14 +103,21 @@ var FORM_SCHEMA = {
     columnHeader: 'Depart_From',
     required: true,
     label: 'Depart From',
-    options: ['High School', 'Middle School', 'Intermediate School', 'Florence Lawson Elementary', 'Early Childhood Center']
+    options: ['High School', 'Middle School', 'Intermediate School', 'Florence Lawson Elementary', 'Early Childhood Center'],
+    section: 'Trip Logistics',
+    col: 6
   },
   destination_address: {
     type: 'text',
     columnHeader: 'Destination_Address',
     required: true,
     maxLength: 300,
-    label: 'Address of Destination'
+    label: 'Address of Destination',
+    placeholder: 'Full street address',
+    helpText: 'Click "Directions" to view route on Google Maps',
+    directionsButton: true,
+    section: 'Trip Logistics',
+    col: 6
   },
   directions_url: {
     type: 'url',
@@ -102,38 +129,51 @@ var FORM_SCHEMA = {
     columnHeader: 'Number_of_Students',
     required: true,
     min: 1,
-    label: 'Number of Students'
+    label: 'Number of Students',
+    section: 'Group Details',
+    col: 6
   },
   num_adults: {
     type: 'number',
     columnHeader: 'Number_of_Adults',
     required: true,
     min: 1,
-    label: 'Number of Adults/Chaperones'
+    label: 'Number of Chaperones',
+    section: 'Group Details',
+    col: 6
   },
   num_large_buses: {
     type: 'number',
     columnHeader: 'Number_of_Large_Buses',
     required: true,
     min: 0,
+    defaultValue: 0,
     label: 'Number of Large Buses',
-    helpText: 'Large Bus = 56 seated, 2 per seat'
+    helpText: 'Large Bus = 56 seated, 2 per seat',
+    section: 'Transportation Needs',
+    col: 4
   },
   num_small_buses: {
     type: 'number',
     columnHeader: 'Number_of_Small_Buses',
     required: true,
     min: 0,
+    defaultValue: 0,
     label: 'Number of Small Buses',
-    helpText: 'Small Bus = 15-20 passenger capacity (wheelchair accessible with lift)'
+    helpText: '15-20 passenger (wheelchair accessible with lift)',
+    section: 'Transportation Needs',
+    col: 4
   },
   num_vans: {
     type: 'number',
     columnHeader: 'Number_of_Vans',
     required: true,
     min: 0,
+    defaultValue: 0,
     label: 'Number of Vans',
-    helpText: 'Van drivers must be van certified prior to driving students'
+    helpText: 'Van drivers must be van certified',
+    section: 'Transportation Needs',
+    col: 4
   },
 
   // Schedule
@@ -141,39 +181,51 @@ var FORM_SCHEMA = {
     type: 'time',
     columnHeader: 'Leave_School',
     required: true,
-    label: 'Time Leaving School'
+    label: 'Time Leaving School',
+    section: 'Schedule',
+    col: 6
   },
   arrive_destination: {
     type: 'time',
     columnHeader: 'Arrive_Destination',
     required: true,
-    label: 'Time Arriving at Destination'
+    label: 'Time Arriving at Destination',
+    section: 'Schedule',
+    col: 6
   },
   leave_destination: {
     type: 'time',
     columnHeader: 'Leave_Destination',
     required: true,
-    label: 'Time Leaving Destination'
+    label: 'Time Leaving Destination',
+    section: 'Schedule',
+    col: 6
   },
   arrive_school: {
     type: 'time',
     columnHeader: 'Arrive_School',
     required: true,
-    label: 'Time Arriving Back at School'
+    label: 'Time Arriving Back at School',
+    section: 'Schedule',
+    col: 6
   },
   extra_stop_eat: {
     type: 'radio',
     columnHeader: 'Extra_Stop_Eat',
     required: true,
     label: 'Extra Stop to Eat',
-    options: ['Yes', 'No']
+    options: ['Yes', 'No'],
+    section: 'Schedule',
+    col: 6
   },
   extra_stop_restroom: {
     type: 'radio',
     columnHeader: 'Extra_Stop_Restroom',
     required: true,
     label: 'Extra Stop for Restroom',
-    options: ['Yes', 'No']
+    options: ['Yes', 'No'],
+    section: 'Schedule',
+    col: 6
   },
 
   // Purpose
@@ -182,14 +234,20 @@ var FORM_SCHEMA = {
     columnHeader: 'Purpose',
     required: true,
     maxLength: 1000,
-    label: 'Educational Purpose of Trip'
+    label: 'Educational Purpose of Trip',
+    placeholder: 'Describe the educational purpose and learning objectives of this field trip',
+    section: 'Educational Purpose',
+    col: 12
   },
   comments_requests: {
     type: 'textarea',
     columnHeader: 'Comments_and_Special_Requests',
     required: false,
     maxLength: 500,
-    label: 'Comments and Special Requests'
+    label: 'Comments and Special Requests',
+    placeholder: 'Any special requests or additional comments about this trip',
+    section: 'Educational Purpose',
+    col: 12
   },
 
   // Approval Fields
@@ -224,6 +282,13 @@ var FORM_SCHEMA = {
     systemGenerated: true
   }
 };
+
+/**
+ * Ordered chain of Schedule-section time fields; consecutive entries must be
+ * increasing. Single source of truth for the cross-field time-sequence checks
+ * in ValidationUtils.js and FormNew.html.
+ */
+var TIME_SEQUENCE_FIELDS = ['leave_school', 'arrive_destination', 'leave_destination', 'arrive_school'];
 
 /**
  * Status values for the approval workflow

@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base target="_top">
+    <title>Admin Dashboard - Field Trip Application</title>
+
+    <!-- Bootstrap 5 CSS, vendored locally (no external CDN request) -->
+    <?!= include('VendorStyles'); ?>
+
+    <style>
+        body {
+            background: #4a5568;
+            min-height: 100vh;
+            padding: 20px 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .dashboard-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, #000068 0%, #0d47a1 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .dashboard-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .dashboard-body {
+            padding: 40px;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #000068 0%, #0d47a1 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-submit:hover {
+            color: white;
+            opacity: 0.9;
+        }
+
+        .nav-tabs .nav-link.active {
+            font-weight: 600;
+            color: #000068;
+        }
+
+        .quick-filter-btn.active {
+            background: #000068;
+            color: white;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .modal-box {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-box-lg {
+            max-width: 800px;
+        }
+
+        #resultsArea table {
+            font-size: 0.92rem;
+        }
+
+        .row-checkbox {
+            width: 18px;
+            height: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid" style="max-width: 1200px;">
+        <div class="dashboard-container">
+            <div class="dashboard-header">
+                <h1>Admin Dashboard</h1>
+                <p class="mb-0" id="roleLine">Field Trip Application</p>
+            </div>
+
+            <div class="dashboard-body">
+                <div id="alertArea"></div>
+
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <ul class="nav nav-tabs" id="mainTabs" style="border-bottom: none;">
+                        <li class="nav-item">
+                            <button type="button" class="nav-link active" data-tab="pending">Pending</button>
+                        </li>
+                        <li class="nav-item">
+                            <button type="button" class="nav-link" data-tab="history">History</button>
+                        </li>
+                        <li class="nav-item">
+                            <button type="button" class="nav-link" data-tab="settings">Settings</button>
+                        </li>
+                    </ul>
+                    <button type="button" class="btn btn-submit" id="createTripBtn" style="display:none;">+ Create Trip</button>
+                </div>
+
+                <div class="btn-group mb-3 flex-wrap" id="historyStatusTabs" role="group" style="display:none;"></div>
+
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-3" id="filterBar">
+                    <div class="btn-group" id="buildingFilterGroup" role="group" style="display:none;"></div>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search destination, name, email, #..." style="max-width: 280px;">
+                    <div class="text-muted ms-auto" id="countLabel"></div>
+                </div>
+
+                <div class="alert alert-secondary d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 d-none" id="bulkActionBar">
+                    <span id="selectedCountLabel"></span>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-success" id="bulkApproveBtn">Approve Selected</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="bulkRejectBtn">Reject Selected</button>
+                    </div>
+                </div>
+
+                <div id="resultsArea"><p class="text-muted">Loading...</p></div>
+
+                <div id="settingsArea" style="display:none;">
+                    <div id="settingsAlert"></div>
+
+                    <div id="globalSettingsSection" style="display:none;">
+                        <h5>Global Settings</h5>
+                        <div class="row" id="globalSettingsFields"></div>
+                    </div>
+
+                    <h5>Building Contacts</h5>
+                    <div class="row" id="buildingSettingsFields"></div>
+
+                    <button type="button" class="btn btn-submit mb-4" id="saveSettingsBtn">Save Settings</button>
+
+                    <hr>
+
+                    <h5>Admin Roster</h5>
+                    <p class="text-muted small" id="rosterHint"></p>
+                    <div class="row g-2 align-items-end mb-3" id="addAdminForm"></div>
+                    <div id="adminRosterTable"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject comment modal -->
+    <div class="modal-overlay" id="commentModalOverlay" style="display:none;">
+        <div class="modal-box">
+            <h5>Add a comment</h5>
+            <p class="text-muted small">This comment is shared with the submitter (and, if this is a district-stage rejection, was already shared with the building admin).</p>
+            <textarea class="form-control mb-3" id="commentModalText" rows="3" placeholder="Reason for rejection (optional but recommended)"></textarea>
+            <div class="text-end">
+                <button type="button" class="btn btn-outline-secondary" id="commentModalCancel">Cancel</button>
+                <button type="button" class="btn btn-danger" id="commentModalConfirm">Confirm Reject</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create / Edit trip modal -->
+    <div class="modal-overlay" id="tripModalOverlay" style="display:none;">
+        <div class="modal-box modal-box-lg">
+            <h5 id="tripModalTitle">Create Trip</h5>
+            <div id="tripModalAlert"></div>
+
+            <form id="tripForm" novalidate>
+                <div class="row" id="statusRow">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="initialStatus">Starting Status</label>
+                        <select class="form-select" id="initialStatus">
+                            <option value="Pending Building Approval">Pending Building Approval</option>
+                            <option value="Pending District Approval">Pending District Approval</option>
+                            <option value="Approved">Approved (backfill a completed trip)</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3 d-flex align-items-end">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="notifyCheck">
+                            <label class="form-check-label" for="notifyCheck">Notify relevant stakeholders by email</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label" for="f_destination">Destination *</label>
+                        <input type="text" class="form-control" id="f_destination" maxlength="200" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="f_trip_date">Date of Trip *</label>
+                        <input type="date" class="form-control" id="f_trip_date" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="f_building">Building *</label>
+                        <select class="form-select" id="f_building" required>
+                            <option value="">Select Building...</option>
+                            <option value="HS">HS</option>
+                            <option value="MS">MS</option>
+                            <option value="IS">IS</option>
+                            <option value="FL">FL</option>
+                            <option value="ECC">ECC</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label" for="f_adult_in_charge">Teacher/Adult in Charge *</label>
+                        <input type="text" class="form-control" id="f_adult_in_charge" maxlength="100" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="f_email">Email Address *</label>
+                        <input type="email" class="form-control" id="f_email" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="f_phone">Phone Number *</label>
+                        <input type="tel" class="form-control" id="f_phone" required placeholder="(XXX) XXX-XXXX">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="f_depart_from">Depart From *</label>
+                        <select class="form-select" id="f_depart_from" required>
+                            <option value="">Select...</option>
+                            <option value="High School">High School</option>
+                            <option value="Middle School">Middle School</option>
+                            <option value="Intermediate School">Intermediate School</option>
+                            <option value="Florence Lawson Elementary">Florence Lawson Elementary</option>
+                            <option value="Early Childhood Center">Early Childhood Center</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="f_destination_address">Address of Destination *</label>
+                        <input type="text" class="form-control" id="f_destination_address" maxlength="300" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label" for="f_num_students">Students *</label>
+                        <input type="number" class="form-control" id="f_num_students" min="1" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label" for="f_num_adults">Chaperones *</label>
+                        <input type="number" class="form-control" id="f_num_adults" min="1" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label" for="f_num_large_buses">Large Buses *</label>
+                        <input type="number" class="form-control" id="f_num_large_buses" min="0" value="0" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label" for="f_num_small_buses">Small Buses *</label>
+                        <input type="number" class="form-control" id="f_num_small_buses" min="0" value="0" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label" for="f_num_vans">Vans *</label>
+                        <input type="number" class="form-control" id="f_num_vans" min="0" value="0" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label" for="f_leave_school">Leave School *</label>
+                        <input type="time" class="form-control" id="f_leave_school" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label" for="f_arrive_destination">Arrive Destination *</label>
+                        <input type="time" class="form-control" id="f_arrive_destination" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label" for="f_leave_destination">Leave Destination *</label>
+                        <input type="time" class="form-control" id="f_leave_destination" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label" for="f_arrive_school">Arrive Back at School *</label>
+                        <input type="time" class="form-control" id="f_arrive_school" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label d-block">Extra Stop to Eat *</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="f_extra_stop_eat" id="f_extra_stop_eat_yes" value="Yes" required>
+                            <label class="form-check-label" for="f_extra_stop_eat_yes">Yes</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="f_extra_stop_eat" id="f_extra_stop_eat_no" value="No" required>
+                            <label class="form-check-label" for="f_extra_stop_eat_no">No</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label d-block">Extra Stop for Restroom *</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="f_extra_stop_restroom" id="f_extra_stop_restroom_yes" value="Yes" required>
+                            <label class="form-check-label" for="f_extra_stop_restroom_yes">Yes</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="f_extra_stop_restroom" id="f_extra_stop_restroom_no" value="No" required>
+                            <label class="form-check-label" for="f_extra_stop_restroom_no">No</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label" for="f_purpose">Purpose of Trip *</label>
+                        <textarea class="form-control" id="f_purpose" rows="2" maxlength="1000" required></textarea>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label" for="f_comments_requests">Comments and Special Requests</label>
+                        <textarea class="form-control" id="f_comments_requests" rows="2" maxlength="500"></textarea>
+                    </div>
+                </div>
+            </form>
+
+            <div class="text-end">
+                <button type="button" class="btn btn-outline-secondary" id="tripModalCancel">Cancel</button>
+                <button type="button" class="btn btn-submit" id="tripModalSave">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var ctx = <?!= JSON.stringify(ctx) ?>;
+
+        var currentTab = 'pending';
+        var historyStatusFilter = 'All';
+        var buildingQuickFilter = '';
+        var searchText = '';
+        var selectedIds = {};
+
+        var pendingData = [];
+        var historyData = [];
+        var historyLoaded = false;
+        var settingsLoaded = false;
+        var rosterAdmins = [];
+        var rosterCanManageAll = false;
+
+        var GLOBAL_SETTINGS_LABELS = {
+            DESTINATION_FOLDER_ID: 'Approved Doc Destination Folder ID',
+            INITIAL_SUB_FOLDER_ID: 'Initial Submission Folder ID',
+            TEMPLATE_ID: 'Approval Doc Template ID',
+            TEMPLATE_INIT_ID: 'Initial Submission Doc Template ID',
+            CALENDAR_NAME: 'Calendar Name',
+            FINAL_EMAIL: 'Final Notification Email',
+            DISTRICT_EMAIL: 'District Admin Email'
+        };
+
+        var editingSubmissionNumber = null; // null => create mode
+
+        var BUILDINGS = ['HS', 'MS', 'IS', 'FL', 'ECC'];
+        var STATUS_TABS = ['All', 'Pending Building Approval', 'Pending District Approval', 'Approved', 'Rejected'];
+        var FORM_FIELD_IDS = [
+            'destination', 'trip_date', 'building', 'adult_in_charge', 'email', 'phone',
+            'depart_from', 'destination_address', 'num_students', 'num_adults',
+            'num_large_buses', 'num_small_buses', 'num_vans',
+            'leave_school', 'arrive_destination', 'leave_destination', 'arrive_school',
+            'purpose', 'comments_requests'
+        ];
+
+        // ---------- Bootstrap-JS-free helpers (only CSS is vendored) ----------
+        document.addEventListener('click', function (e) {
+            var dismissBtn = e.target.closest('[data-bs-dismiss="alert"]');
+            if (dismissBtn) {
+                var alertEl = dismissBtn.closest('.alert');
+                if (alertEl) alertEl.remove();
+            }
+        });
+
+        function showAlert(message, type) {
+            var div = document.createElement('div');
+            div.className = 'alert alert-' + (type || 'danger') + ' alert-dismissible fade show';
+            div.setAttribute('role', 'alert');
+            div.textContent = message;
+
+            var closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'btn-close';
+            closeBtn.setAttribute('data-bs-dismiss', 'alert');
+            div.appendChild(closeBtn);
+
+            var area = document.getElementById('alertArea');
+            area.innerHTML = '';
+            area.appendChild(div);
+        }
+
+        function statusBadgeClass(status) {
+            if (status === 'Approved') return 'text-bg-success';
+            if (status === 'Rejected') return 'text-bg-danger';
+            if (status === 'Pending District Approval') return 'text-bg-info';
+            return 'text-bg-warning';
+        }
+
+        // Trip_Date cells come back as either a "YYYY-MM-DDTHH:mm:ss.sssZ" ISO string (Sheets
+        // auto-converted the cell to a real Date, JSON.stringify'd on the server) or a plain
+        // "YYYY-MM-DD" string. Parsing the date PARTS directly (not new Date(isoString)) avoids
+        // a UTC/local timezone shift landing on the wrong calendar day - same fix already used
+        // in BuildingAdminNew.html's formatDateDisplay.
+        function parseDateSafe(dateValue) {
+            if (!dateValue) return null;
+
+            var datePart = String(dateValue).split('T')[0];
+            var parts = datePart.split('-');
+            if (parts.length !== 3) return null;
+
+            return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        }
+
+        function toDateInputValue(value) {
+            var d = parseDateSafe(value);
+            if (!d) return '';
+            var mm = String(d.getMonth() + 1);
+            var dd = String(d.getDate());
+            if (mm.length < 2) mm = '0' + mm;
+            if (dd.length < 2) dd = '0' + dd;
+            return d.getFullYear() + '-' + mm + '-' + dd;
+        }
+
+        function formatDateDisplay(value) {
+            var d = parseDateSafe(value);
+            return d ? (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear() : '-';
+        }
+
+        function to24HourInputValue(timeStr) {
+            if (!timeStr) return '';
+            var match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(String(timeStr).trim());
+            if (!match) return '';
+            var hours = parseInt(match[1], 10);
+            var minutes = match[2];
+            var ampm = match[3].toUpperCase();
+            if (ampm === 'PM' && hours !== 12) hours += 12;
+            if (ampm === 'AM' && hours === 12) hours = 0;
+            return (hours < 10 ? '0' + hours : String(hours)) + ':' + minutes;
+        }
+
+        // ---------- Role setup ----------
+        function initRoleUI() {
+            var roleLabel = ctx.isSuper ? 'Super Admin' : (ctx.isDistrict ? 'District Admin' : 'Building Admin (' + ctx.buildings.join(', ') + ')');
+            document.getElementById('roleLine').textContent = (ctx.name ? ctx.name + ' — ' : '') + roleLabel;
+
+            if (ctx.isSuper) {
+                document.getElementById('createTripBtn').style.display = '';
+            }
+
+            if (ctx.isDistrict || ctx.isSuper) {
+                var group = document.getElementById('buildingFilterGroup');
+                group.style.display = '';
+                group.appendChild(makeQuickFilterBtn('All', ''));
+                BUILDINGS.forEach(function (b) {
+                    group.appendChild(makeQuickFilterBtn(b, b));
+                });
+            }
+        }
+
+        function makeQuickFilterBtn(label, value) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-outline-secondary quick-filter-btn' + (value === buildingQuickFilter ? ' active' : '');
+            btn.textContent = label;
+            btn.addEventListener('click', function () {
+                buildingQuickFilter = value;
+                document.querySelectorAll('.quick-filter-btn').forEach(function (b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                render();
+            });
+            return btn;
+        }
+
+        // ---------- Tabs ----------
+        document.querySelectorAll('#mainTabs .nav-link').forEach(function (link) {
+            link.addEventListener('click', function () {
+                document.querySelectorAll('#mainTabs .nav-link').forEach(function (l) { l.classList.remove('active'); });
+                link.classList.add('active');
+                currentTab = link.getAttribute('data-tab');
+                selectedIds = {};
+
+                var isSettings = currentTab === 'settings';
+
+                document.getElementById('historyStatusTabs').style.display = (currentTab === 'history') ? '' : 'none';
+                document.getElementById('bulkActionBar').classList.add('d-none');
+                document.getElementById('filterBar').classList.toggle('d-none', isSettings);
+                document.getElementById('resultsArea').style.display = isSettings ? 'none' : '';
+                document.getElementById('settingsArea').style.display = isSettings ? '' : 'none';
+                if (isSettings) {
+                    document.getElementById('countLabel').textContent = '';
+                }
+                if (ctx.isSuper) {
+                    document.getElementById('createTripBtn').style.display = isSettings ? 'none' : '';
+                }
+
+                if (isSettings) {
+                    if (!settingsLoaded) loadSettingsTab();
+                } else if (currentTab === 'history' && !historyLoaded) {
+                    loadHistory();
+                } else {
+                    render();
+                }
+            });
+        });
+
+        function initHistoryStatusTabs() {
+            var wrap = document.getElementById('historyStatusTabs');
+            STATUS_TABS.forEach(function (status) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-outline-secondary quick-filter-btn' + (status === historyStatusFilter ? ' active' : '');
+                btn.textContent = status;
+                btn.addEventListener('click', function () {
+                    historyStatusFilter = status;
+                    wrap.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    render();
+                });
+                wrap.appendChild(btn);
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('input', function (e) {
+            searchText = e.target.value.trim().toLowerCase();
+            render();
+        });
+
+        // ---------- Data loading ----------
+        function loadPending() {
+            document.getElementById('resultsArea').innerHTML = '<p class="text-muted">Loading...</p>';
+
+            google.script.run
+                .withSuccessHandler(function (raw) {
+                    var result;
+                    try { result = JSON.parse(raw); } catch (e) { result = null; }
+
+                    if (!result || !result.success) {
+                        document.getElementById('resultsArea').innerHTML =
+                            '<div class="alert alert-danger">' + ((result && result.message) || 'Unable to load pending applications.') + '</div>';
+                        return;
+                    }
+
+                    pendingData = result.submissions || [];
+                    render();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('getPendingForMe failed:', error);
+                    document.getElementById('resultsArea').innerHTML = '<div class="alert alert-danger">Something went wrong loading pending applications.</div>';
+                })
+                .getPendingForMe();
+        }
+
+        function loadHistory() {
+            document.getElementById('resultsArea').innerHTML = '<p class="text-muted">Loading...</p>';
+
+            google.script.run
+                .withSuccessHandler(function (raw) {
+                    var result;
+                    try { result = JSON.parse(raw); } catch (e) { result = null; }
+
+                    if (!result || !result.success) {
+                        document.getElementById('resultsArea').innerHTML =
+                            '<div class="alert alert-danger">' + ((result && result.message) || 'Unable to load history.') + '</div>';
+                        return;
+                    }
+
+                    historyData = result.submissions || [];
+                    historyLoaded = true;
+                    render();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('getHistory failed:', error);
+                    document.getElementById('resultsArea').innerHTML = '<div class="alert alert-danger">Something went wrong loading history.</div>';
+                })
+                .getHistory(JSON.stringify({ status: 'All', building: '', search: '' }));
+        }
+
+        // ---------- Filtering + rendering ----------
+        function currentDataset() {
+            return currentTab === 'pending' ? pendingData : historyData;
+        }
+
+        function applyFilters(rows) {
+            return rows.filter(function (s) {
+                if (buildingQuickFilter && s.building !== buildingQuickFilter) return false;
+                if (currentTab === 'history' && historyStatusFilter !== 'All' && s.status !== historyStatusFilter) return false;
+
+                if (searchText) {
+                    var haystack = [s.destination, s.adult_in_charge, s.email, String(s.submission_number)]
+                        .join(' ').toLowerCase();
+                    if (haystack.indexOf(searchText) === -1) return false;
+                }
+
+                return true;
+            });
+        }
+
+        function render() {
+            var filtered = applyFilters(currentDataset());
+
+            document.getElementById('countLabel').textContent =
+                filtered.length + (filtered.length === 1 ? ' application' : ' applications');
+
+            renderTable(filtered);
+            renderBulkBar(filtered);
+        }
+
+        function renderTable(rows) {
+            var area = document.getElementById('resultsArea');
+            area.innerHTML = '';
+
+            if (rows.length === 0) {
+                var none = document.createElement('p');
+                none.className = 'text-muted';
+                none.textContent = 'No applications match the current filters.';
+                area.appendChild(none);
+                return;
+            }
+
+            var showCheckboxes = currentTab === 'pending';
+            var showAdminActions = ctx.isSuper;
+
+            var table = document.createElement('table');
+            table.className = 'table table-hover align-middle';
+
+            var headHtml = '<thead><tr>';
+            if (showCheckboxes) headHtml += '<th></th>';
+            headHtml += '<th>#</th><th>Building</th><th>Destination</th><th>Trip Date</th><th>Adult in Charge</th><th>Status</th><th></th>';
+            headHtml += '</tr></thead>';
+            table.innerHTML = headHtml;
+
+            var tbody = document.createElement('tbody');
+
+            rows.forEach(function (s) {
+                var tr = document.createElement('tr');
+
+                if (showCheckboxes) {
+                    var cbTd = document.createElement('td');
+                    var cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.className = 'row-checkbox form-check-input';
+                    cb.checked = !!selectedIds[s.submission_number];
+                    cb.addEventListener('change', function () {
+                        if (cb.checked) {
+                            selectedIds[s.submission_number] = true;
+                        } else {
+                            delete selectedIds[s.submission_number];
+                        }
+                        renderBulkBar(applyFilters(currentDataset()));
+                    });
+                    cbTd.appendChild(cb);
+                    tr.appendChild(cbTd);
+                }
+
+                var tripDateDisplay = formatDateDisplay(s.trip_date);
+                [s.submission_number, s.building, s.destination, tripDateDisplay, s.adult_in_charge].forEach(function (val) {
+                    var td = document.createElement('td');
+                    td.textContent = val || '-';
+                    tr.appendChild(td);
+                });
+
+                var statusTd = document.createElement('td');
+                var badge = document.createElement('span');
+                badge.className = 'badge ' + statusBadgeClass(s.status);
+                badge.textContent = s.status || '-';
+                statusTd.appendChild(badge);
+                tr.appendChild(statusTd);
+
+                var actionTd = document.createElement('td');
+                actionTd.className = 'text-end';
+                actionTd.style.whiteSpace = 'nowrap';
+
+                if (currentTab === 'pending' && canActOnRow(s)) {
+                    actionTd.appendChild(makeActionButton('Approve', 'btn-outline-success', function () {
+                        processSingle(s.submission_number, 'approve', '');
+                    }));
+                    actionTd.appendChild(makeActionButton('Reject', 'btn-outline-danger', function () {
+                        openCommentModal(function (comment) {
+                            processSingle(s.submission_number, 'reject', comment);
+                        });
+                    }));
+                }
+
+                if (showAdminActions) {
+                    actionTd.appendChild(makeActionButton('Edit', 'btn-outline-secondary', function () {
+                        openEditModal(s);
+                    }));
+                    actionTd.appendChild(makeActionButton('Print', 'btn-outline-primary', function () {
+                        printSubmission(s.submission_number);
+                    }));
+                }
+
+                tr.appendChild(actionTd);
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            area.appendChild(table);
+        }
+
+        function makeActionButton(label, cls, onClick) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-sm ' + cls + ' ms-1';
+            btn.textContent = label;
+            btn.addEventListener('click', onClick);
+            return btn;
+        }
+
+        function canActOnRow(s) {
+            if (ctx.isSuper) return true;
+            if (s.status === 'Pending District Approval') return ctx.isDistrict;
+            if (s.status === 'Pending Building Approval') return ctx.buildings.indexOf(s.building) !== -1;
+            return false;
+        }
+
+        function renderBulkBar(filteredRows) {
+            var validIds = {};
+            filteredRows.forEach(function (s) { validIds[s.submission_number] = true; });
+            Object.keys(selectedIds).forEach(function (id) {
+                if (!validIds[id]) delete selectedIds[id];
+            });
+
+            var count = Object.keys(selectedIds).length;
+            var bar = document.getElementById('bulkActionBar');
+
+            if (currentTab === 'pending' && count > 0) {
+                bar.classList.remove('d-none');
+                document.getElementById('selectedCountLabel').textContent = count + ' selected';
+            } else {
+                bar.classList.add('d-none');
+            }
+        }
+
+        // ---------- Single-row + bulk actions ----------
+        function processSingle(submissionNumber, action, comment) {
+            bulkAction([submissionNumber], action, comment);
+        }
+
+        document.getElementById('bulkApproveBtn').addEventListener('click', function () {
+            bulkAction(Object.keys(selectedIds), 'approve', '');
+        });
+
+        document.getElementById('bulkRejectBtn').addEventListener('click', function () {
+            openCommentModal(function (comment) {
+                bulkAction(Object.keys(selectedIds), 'reject', comment);
+            });
+        });
+
+        function bulkAction(ids, action, comment) {
+            if (!ids.length) return;
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    if (!response || !response.success) {
+                        showAlert((response && response.message) || 'Something went wrong processing that request.', 'danger');
+                        return;
+                    }
+
+                    var failed = (response.results || []).filter(function (r) { return !r.success; });
+                    var okCount = ids.length - failed.length;
+
+                    if (failed.length === 0) {
+                        showAlert(okCount + ' application(s) ' + (action === 'approve' ? 'approved' : 'rejected') + '.', 'success');
+                    } else {
+                        showAlert(okCount + ' succeeded, ' + failed.length + ' failed: ' +
+                            failed.map(function (f) { return '#' + f.id + ' (' + f.message + ')'; }).join('; '), 'warning');
+                    }
+
+                    selectedIds = {};
+                    reloadCurrentTab();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('bulkProcessSubmissions failed:', error);
+                    showAlert('Something went wrong processing that request.', 'danger');
+                })
+                .bulkProcessSubmissions(JSON.stringify({ submissionNumbers: ids, action: action, comments: comment }));
+        }
+
+        function reloadCurrentTab() {
+            historyLoaded = false; // invalidate the history cache too, even if we're not on that tab right now
+            if (currentTab === 'pending') {
+                loadPending();
+            } else {
+                loadHistory();
+            }
+        }
+
+        // ---------- Comment modal (used for both single and bulk reject) ----------
+        var commentModalCallback = null;
+
+        function openCommentModal(onConfirm) {
+            commentModalCallback = onConfirm;
+            document.getElementById('commentModalText').value = '';
+            document.getElementById('commentModalOverlay').style.display = 'flex';
+        }
+
+        document.getElementById('commentModalCancel').addEventListener('click', function () {
+            document.getElementById('commentModalOverlay').style.display = 'none';
+            commentModalCallback = null;
+        });
+
+        document.getElementById('commentModalConfirm').addEventListener('click', function () {
+            var comment = document.getElementById('commentModalText').value.trim();
+            document.getElementById('commentModalOverlay').style.display = 'none';
+            if (commentModalCallback) commentModalCallback(comment);
+            commentModalCallback = null;
+        });
+
+        // ---------- Print (super admin) ----------
+        function printSubmission(submissionNumber) {
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    if (!response || !response.success) {
+                        showAlert((response && response.message) || 'Unable to generate the document.', 'danger');
+                        return;
+                    }
+                    window.open(response.url, '_blank');
+                })
+                .withFailureHandler(function (error) {
+                    console.error('adminPrintSubmission failed:', error);
+                    showAlert('Something went wrong generating the document.', 'danger');
+                })
+                .adminPrintSubmission(submissionNumber);
+        }
+
+        // ---------- Create / Edit trip modal (super admin) ----------
+        document.getElementById('createTripBtn').addEventListener('click', function () {
+            openCreateModal();
+        });
+
+        function openCreateModal() {
+            editingSubmissionNumber = null;
+            document.getElementById('tripModalTitle').textContent = 'Create Trip';
+            document.getElementById('statusRow').style.display = '';
+            document.getElementById('tripModalAlert').innerHTML = '';
+            document.getElementById('tripForm').reset();
+            document.getElementById('initialStatus').value = 'Pending Building Approval';
+            document.getElementById('notifyCheck').checked = false;
+            document.getElementById('tripModalOverlay').style.display = 'flex';
+        }
+
+        function openEditModal(submission) {
+            editingSubmissionNumber = submission.submission_number;
+            document.getElementById('tripModalTitle').textContent = 'Edit Trip #' + submission.submission_number;
+            document.getElementById('statusRow').style.display = 'none';
+            document.getElementById('tripModalAlert').innerHTML = '';
+            document.getElementById('tripForm').reset();
+
+            document.getElementById('f_destination').value = submission.destination || '';
+            document.getElementById('f_trip_date').value = toDateInputValue(submission.trip_date);
+            document.getElementById('f_building').value = submission.building || '';
+            document.getElementById('f_adult_in_charge').value = submission.adult_in_charge || '';
+            document.getElementById('f_email').value = submission.email || '';
+            document.getElementById('f_phone').value = submission.phone || '';
+            document.getElementById('f_depart_from').value = submission.depart_from || '';
+            document.getElementById('f_destination_address').value = submission.destination_address || '';
+            document.getElementById('f_num_students').value = submission.num_students || '';
+            document.getElementById('f_num_adults').value = submission.num_adults || '';
+            document.getElementById('f_num_large_buses').value = submission.num_large_buses || 0;
+            document.getElementById('f_num_small_buses').value = submission.num_small_buses || 0;
+            document.getElementById('f_num_vans').value = submission.num_vans || 0;
+            document.getElementById('f_leave_school').value = to24HourInputValue(submission.leave_school);
+            document.getElementById('f_arrive_destination').value = to24HourInputValue(submission.arrive_destination);
+            document.getElementById('f_leave_destination').value = to24HourInputValue(submission.leave_destination);
+            document.getElementById('f_arrive_school').value = to24HourInputValue(submission.arrive_school);
+            document.getElementById('f_purpose').value = submission.purpose || '';
+            document.getElementById('f_comments_requests').value = submission.comments_requests || '';
+
+            if (submission.extra_stop_eat === 'Yes') document.getElementById('f_extra_stop_eat_yes').checked = true;
+            if (submission.extra_stop_eat === 'No') document.getElementById('f_extra_stop_eat_no').checked = true;
+            if (submission.extra_stop_restroom === 'Yes') document.getElementById('f_extra_stop_restroom_yes').checked = true;
+            if (submission.extra_stop_restroom === 'No') document.getElementById('f_extra_stop_restroom_no').checked = true;
+
+            document.getElementById('tripModalOverlay').style.display = 'flex';
+        }
+
+        document.getElementById('tripModalCancel').addEventListener('click', function () {
+            document.getElementById('tripModalOverlay').style.display = 'none';
+        });
+
+        function collectTripFormData() {
+            var data = {};
+            FORM_FIELD_IDS.forEach(function (key) {
+                var el = document.getElementById('f_' + key);
+                if (el) data[key] = el.value;
+            });
+
+            var eatYes = document.getElementById('f_extra_stop_eat_yes');
+            var eatNo = document.getElementById('f_extra_stop_eat_no');
+            data.extra_stop_eat = eatYes.checked ? 'Yes' : (eatNo.checked ? 'No' : '');
+
+            var restYes = document.getElementById('f_extra_stop_restroom_yes');
+            var restNo = document.getElementById('f_extra_stop_restroom_no');
+            data.extra_stop_restroom = restYes.checked ? 'Yes' : (restNo.checked ? 'No' : '');
+
+            return data;
+        }
+
+        document.getElementById('tripModalSave').addEventListener('click', function () {
+            var form = document.getElementById('tripForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            var data = collectTripFormData();
+            var saveBtn = document.getElementById('tripModalSave');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            function done() {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+            }
+
+            if (editingSubmissionNumber === null) {
+                data.initialStatus = document.getElementById('initialStatus').value;
+                data.notify = document.getElementById('notifyCheck').checked;
+
+                google.script.run
+                    .withSuccessHandler(function (response) {
+                        done();
+                        if (!response || !response.success) {
+                            document.getElementById('tripModalAlert').innerHTML =
+                                '<div class="alert alert-danger">' + ((response && response.message) || 'Unable to create trip.') + '</div>';
+                            return;
+                        }
+                        document.getElementById('tripModalOverlay').style.display = 'none';
+                        showAlert('Trip #' + response.submissionNumber + ' created.', 'success');
+                        reloadCurrentTab();
+                    })
+                    .withFailureHandler(function (error) {
+                        done();
+                        console.error('adminCreateSubmission failed:', error);
+                        document.getElementById('tripModalAlert').innerHTML = '<div class="alert alert-danger">Something went wrong creating the trip.</div>';
+                    })
+                    .adminCreateSubmission(JSON.stringify(data));
+            } else {
+                google.script.run
+                    .withSuccessHandler(function (response) {
+                        done();
+                        if (!response || !response.success) {
+                            document.getElementById('tripModalAlert').innerHTML =
+                                '<div class="alert alert-danger">' + ((response && response.message) || 'Unable to save changes.') + '</div>';
+                            return;
+                        }
+                        document.getElementById('tripModalOverlay').style.display = 'none';
+                        showAlert('Trip #' + editingSubmissionNumber + ' updated.', 'success');
+                        reloadCurrentTab();
+                    })
+                    .withFailureHandler(function (error) {
+                        done();
+                        console.error('adminEditSubmission failed:', error);
+                        document.getElementById('tripModalAlert').innerHTML = '<div class="alert alert-danger">Something went wrong saving changes.</div>';
+                    })
+                    .adminEditSubmission(editingSubmissionNumber, JSON.stringify(data));
+            }
+        });
+
+        // ---------- Settings tab ----------
+        function loadSettingsTab() {
+            document.getElementById('settingsAlert').innerHTML = '';
+            document.getElementById('globalSettingsFields').innerHTML = '<p class="text-muted">Loading...</p>';
+            document.getElementById('buildingSettingsFields').innerHTML = '';
+            document.getElementById('adminRosterTable').innerHTML = '';
+            document.getElementById('addAdminForm').innerHTML = '';
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    if (!response || !response.success) {
+                        document.getElementById('globalSettingsFields').innerHTML =
+                            '<div class="alert alert-danger">' + ((response && response.message) || 'Unable to load settings.') + '</div>';
+                        return;
+                    }
+                    renderSettingsForm(response);
+                    settingsLoaded = true;
+                    loadAdminRoster();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('getSettingsForDashboard failed:', error);
+                    document.getElementById('globalSettingsFields').innerHTML = '<div class="alert alert-danger">Something went wrong loading settings.</div>';
+                })
+                .getSettingsForDashboard();
+        }
+
+        function makeSettingField(id, label, value, compact) {
+            var wrap = document.createElement('div');
+            wrap.className = compact ? 'mb-2' : 'col-md-6 mb-3';
+
+            var lbl = document.createElement('label');
+            lbl.className = 'form-label small mb-1';
+            lbl.setAttribute('for', id);
+            lbl.textContent = label;
+
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control form-control-sm';
+            input.id = id;
+            input.value = value;
+
+            wrap.appendChild(lbl);
+            wrap.appendChild(input);
+            return wrap;
+        }
+
+        function renderSettingsForm(response) {
+            var globalSection = document.getElementById('globalSettingsSection');
+            var globalFields = document.getElementById('globalSettingsFields');
+            globalFields.innerHTML = '';
+
+            if (response.global) {
+                globalSection.style.display = '';
+                Object.keys(GLOBAL_SETTINGS_LABELS).forEach(function (key) {
+                    globalFields.appendChild(makeSettingField('g_' + key, GLOBAL_SETTINGS_LABELS[key], response.global[key] || ''));
+                });
+            } else {
+                globalSection.style.display = 'none';
+            }
+
+            var buildingFields = document.getElementById('buildingSettingsFields');
+            buildingFields.innerHTML = '';
+
+            Object.keys(response.buildings || {}).forEach(function (code) {
+                var b = response.buildings[code];
+                var col = document.createElement('div');
+                col.className = 'col-md-6 mb-3';
+
+                var card = document.createElement('div');
+                card.className = 'border rounded p-3';
+
+                var heading = document.createElement('strong');
+                heading.textContent = code;
+                card.appendChild(heading);
+
+                card.appendChild(makeSettingField('b_' + code + '_ADMIN', 'Admin Name', b.admin, true));
+                card.appendChild(makeSettingField('b_' + code + '_EMAIL', 'Admin Email', b.email, true));
+
+                col.appendChild(card);
+                buildingFields.appendChild(col);
+            });
+        }
+
+        function collectSettingsFormData() {
+            var updates = {};
+
+            document.querySelectorAll('#globalSettingsFields input').forEach(function (input) {
+                updates[input.id.replace(/^g_/, '')] = input.value;
+            });
+
+            document.querySelectorAll('#buildingSettingsFields input').forEach(function (input) {
+                updates[input.id.replace(/^b_/, '')] = input.value;
+            });
+
+            return updates;
+        }
+
+        document.getElementById('saveSettingsBtn').addEventListener('click', function () {
+            var updates = collectSettingsFormData();
+            var btn = document.getElementById('saveSettingsBtn');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Settings';
+
+                    if (!response || !response.success) {
+                        document.getElementById('settingsAlert').innerHTML =
+                            '<div class="alert alert-danger">' + ((response && response.message) || 'Unable to save settings.') + '</div>';
+                        return;
+                    }
+
+                    var msg = response.saved.length + ' setting(s) saved.';
+                    if (response.skipped && response.skipped.length) {
+                        msg += ' (' + response.skipped.length + ' not permitted and skipped.)';
+                    }
+                    document.getElementById('settingsAlert').innerHTML = '<div class="alert alert-success">' + msg + '</div>';
+                })
+                .withFailureHandler(function (error) {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Settings';
+                    console.error('saveSettings failed:', error);
+                    document.getElementById('settingsAlert').innerHTML = '<div class="alert alert-danger">Something went wrong saving settings.</div>';
+                })
+                .saveSettings(JSON.stringify(updates));
+        });
+
+        // ---------- Admin roster ----------
+        function loadAdminRoster() {
+            document.getElementById('adminRosterTable').innerHTML = '<p class="text-muted">Loading...</p>';
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    if (!response || !response.success) {
+                        document.getElementById('adminRosterTable').innerHTML =
+                            '<div class="alert alert-danger">' + ((response && response.message) || 'Unable to load the admin roster.') + '</div>';
+                        return;
+                    }
+                    rosterAdmins = response.admins || [];
+                    rosterCanManageAll = !!response.canManageAll;
+                    renderAddAdminForm();
+                    renderAdminRoster();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('getAdminsRosterForDashboard failed:', error);
+                    document.getElementById('adminRosterTable').innerHTML = '<div class="alert alert-danger">Something went wrong loading the admin roster.</div>';
+                })
+                .getAdminsRosterForDashboard();
+        }
+
+        function renderAdminRoster() {
+            var area = document.getElementById('adminRosterTable');
+            area.innerHTML = '';
+
+            document.getElementById('rosterHint').textContent = rosterCanManageAll
+                ? 'Every admin grant across the district. Deactivating removes dashboard access without deleting history.'
+                : 'Active admins for your building.';
+
+            if (rosterAdmins.length === 0) {
+                var none = document.createElement('p');
+                none.className = 'text-muted';
+                none.textContent = 'No admins to show.';
+                area.appendChild(none);
+                return;
+            }
+
+            var table = document.createElement('table');
+            table.className = 'table table-sm table-hover align-middle';
+            var headHtml = '<thead><tr><th>Email</th><th>Role</th><th>Building</th><th>Name</th><th>Status</th>';
+            if (rosterCanManageAll) headHtml += '<th></th>';
+            headHtml += '</tr></thead>';
+            table.innerHTML = headHtml;
+
+            var tbody = document.createElement('tbody');
+            rosterAdmins.forEach(function (a) {
+                var tr = document.createElement('tr');
+                [a.email, a.role, a.building || '-', a.name || '-'].forEach(function (val) {
+                    var td = document.createElement('td');
+                    td.textContent = val;
+                    tr.appendChild(td);
+                });
+
+                var statusTd = document.createElement('td');
+                var badge = document.createElement('span');
+                badge.className = 'badge ' + (a.active ? 'text-bg-success' : 'text-bg-secondary');
+                badge.textContent = a.active ? 'Active' : 'Inactive';
+                statusTd.appendChild(badge);
+                tr.appendChild(statusTd);
+
+                if (rosterCanManageAll) {
+                    var actionTd = document.createElement('td');
+                    actionTd.appendChild(makeActionButton(a.active ? 'Deactivate' : 'Reactivate',
+                        a.active ? 'btn-outline-danger' : 'btn-outline-success', function () {
+                            setAdminActive(a, !a.active);
+                        }));
+                    tr.appendChild(actionTd);
+                }
+
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            area.appendChild(table);
+        }
+
+        function setAdminActive(admin, active) {
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    if (!response || !response.success) {
+                        showAlert((response && response.message) || 'Unable to update that admin.', 'danger');
+                        return;
+                    }
+                    loadAdminRoster();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('setAdminRowActive failed:', error);
+                    showAlert('Something went wrong updating that admin.', 'danger');
+                })
+                .setAdminRowActive(JSON.stringify({ email: admin.email, role: admin.role, building: admin.building, active: active }));
+        }
+
+        function makeAddAdminInput(id, label, type) {
+            var col = document.createElement('div');
+            col.className = 'col-md-3';
+            var lbl = document.createElement('label');
+            lbl.className = 'form-label small mb-1';
+            lbl.textContent = label;
+            var input = document.createElement('input');
+            input.type = type;
+            input.className = 'form-control form-control-sm';
+            input.id = id;
+            col.appendChild(lbl);
+            col.appendChild(input);
+            return col;
+        }
+
+        function makeAddAdminSelect(id, label, options) {
+            var col = document.createElement('div');
+            col.className = 'col-md-2';
+            var lbl = document.createElement('label');
+            lbl.className = 'form-label small mb-1';
+            lbl.textContent = label;
+            var select = document.createElement('select');
+            select.className = 'form-select form-select-sm';
+            select.id = id;
+            options.forEach(function (opt) {
+                var o = document.createElement('option');
+                o.value = opt;
+                o.textContent = opt;
+                select.appendChild(o);
+            });
+            col.appendChild(lbl);
+            col.appendChild(select);
+            return { wrap: col, select: select };
+        }
+
+        function renderAddAdminForm() {
+            var wrap = document.getElementById('addAdminForm');
+            wrap.innerHTML = '';
+
+            wrap.appendChild(makeAddAdminInput('newAdminEmail', 'Email', 'email'));
+            wrap.appendChild(makeAddAdminInput('newAdminName', 'Name', 'text'));
+
+            var roleSelect = null;
+            if (rosterCanManageAll) {
+                roleSelect = makeAddAdminSelect('newAdminRole', 'Role', ['building', 'district', 'super']);
+                wrap.appendChild(roleSelect.wrap);
+            }
+
+            var buildingOptions = rosterCanManageAll ? BUILDINGS : ctx.buildings;
+            var buildingSelect = makeAddAdminSelect('newAdminBuilding', 'Building', buildingOptions);
+            wrap.appendChild(buildingSelect.wrap);
+
+            if (roleSelect) {
+                var toggleBuilding = function () {
+                    buildingSelect.wrap.style.display = roleSelect.select.value === 'building' ? '' : 'none';
+                };
+                roleSelect.select.addEventListener('change', toggleBuilding);
+                toggleBuilding();
+            }
+
+            var btnCol = document.createElement('div');
+            btnCol.className = 'col-md-2';
+            var addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'btn btn-sm btn-submit w-100';
+            addBtn.textContent = 'Add Admin';
+            addBtn.addEventListener('click', function () {
+                submitAddAdmin(roleSelect, buildingSelect.select, addBtn);
+            });
+            btnCol.appendChild(addBtn);
+            wrap.appendChild(btnCol);
+        }
+
+        function submitAddAdmin(roleSelect, buildingSelectEl, btn) {
+            var email = document.getElementById('newAdminEmail').value.trim();
+            var name = document.getElementById('newAdminName').value.trim();
+
+            if (!email) {
+                showAlert('Please enter an email address.', 'danger');
+                return;
+            }
+
+            var payload = {
+                email: email,
+                name: name,
+                role: roleSelect ? roleSelect.select.value : 'building',
+                building: buildingSelectEl.value
+            };
+
+            btn.disabled = true;
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    btn.disabled = false;
+                    if (!response || !response.success) {
+                        showAlert((response && response.message) || 'Unable to add that admin.', 'danger');
+                        return;
+                    }
+                    document.getElementById('newAdminEmail').value = '';
+                    document.getElementById('newAdminName').value = '';
+                    showAlert('Admin added.', 'success');
+                    loadAdminRoster();
+                })
+                .withFailureHandler(function (error) {
+                    btn.disabled = false;
+                    console.error('addAdminRow failed:', error);
+                    showAlert('Something went wrong adding that admin.', 'danger');
+                })
+                .addAdminRow(JSON.stringify(payload));
+        }
+
+        // ---------- Init ----------
+        initRoleUI();
+        initHistoryStatusTabs();
+        loadPending();
+    </script>
+</body>
+</html>
