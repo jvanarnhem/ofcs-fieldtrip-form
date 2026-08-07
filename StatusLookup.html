@@ -76,15 +76,9 @@
             <div class="lookup-body">
                 <div id="alertArea"></div>
 
-                <form id="lookupForm">
-                    <label class="form-label" for="email">Email address used on the application</label>
-                    <div class="input-group mb-3">
-                        <input type="email" class="form-control" id="email" required placeholder="you@ofcs.net">
-                        <button class="btn btn-submit" type="submit" id="lookupBtn">Check Status</button>
-                    </div>
-                </form>
+                <p class="text-muted" id="showingForLabel"></p>
 
-                <div id="resultsArea"></div>
+                <div id="resultsArea"><p class="text-muted">Loading...</p></div>
             </div>
         </div>
     </div>
@@ -99,35 +93,28 @@
             }
         });
 
-        document.getElementById('lookupForm').addEventListener('submit', function (e) {
-            e.preventDefault();
+        // Always the signed-in visitor's own email - never a free-typed one, so this
+        // can't be used to look up anyone else's submissions
+        const userEmail = <?!= JSON.stringify(userEmail) ?>;
 
-            var email = document.getElementById('email').value.trim();
-            var btn = document.getElementById('lookupBtn');
-            btn.disabled = true;
-            btn.textContent = 'Searching...';
+        document.getElementById('showingForLabel').textContent = 'Showing results for ' + userEmail;
 
-            google.script.run
-                .withSuccessHandler(function (rawResult) {
-                    btn.disabled = false;
-                    btn.textContent = 'Check Status';
-                    try {
-                        var result = JSON.parse(rawResult);
-                        console.log('getMySubmissions result:', result);
-                        renderResults(result);
-                    } catch (renderError) {
-                        console.error('renderResults error:', renderError, rawResult);
-                        showAlert('Something went wrong displaying your results. Please try again.', 'danger');
-                    }
-                })
-                .withFailureHandler(function (error) {
-                    btn.disabled = false;
-                    btn.textContent = 'Check Status';
-                    console.error('getMySubmissions failed:', error);
-                    showAlert('Something went wrong looking up your applications. Please try again.', 'danger');
-                })
-                .getMySubmissions(email);
-        });
+        google.script.run
+            .withSuccessHandler(function (rawResult) {
+                try {
+                    var result = JSON.parse(rawResult);
+                    console.log('getMySubmissions result:', result);
+                    renderResults(result);
+                } catch (renderError) {
+                    console.error('renderResults error:', renderError, rawResult);
+                    showAlert('Something went wrong displaying your results. Please try again.', 'danger');
+                }
+            })
+            .withFailureHandler(function (error) {
+                console.error('getMySubmissions failed:', error);
+                showAlert('Something went wrong looking up your applications. Please try again.', 'danger');
+            })
+            .getMySubmissions(userEmail);
 
         function statusBadgeClass(status) {
             if (status === 'Approved') return 'text-bg-success';

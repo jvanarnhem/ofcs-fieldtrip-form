@@ -320,6 +320,7 @@
 
             const formFields = <?!= JSON.stringify(formFields) ?>;
             const timeSequence = <?!= JSON.stringify(timeSequence) ?>;
+            const userEmail = <?!= JSON.stringify(userEmail) ?>;
 
             const SECTION_ORDER = [
                 'Trip Information',
@@ -495,6 +496,13 @@
             }
 
             renderForm();
+
+            // Pre-fill, not lock - prevents the common case of a typo'd email while
+            // still letting someone submit under a different (e.g. personal) address
+            if (userEmail) {
+                const emailField = document.getElementById('email');
+                if (emailField) emailField.value = userEmail;
+            }
 
             const form = document.getElementById('fieldTripForm');
             const alertArea = document.getElementById('alertArea');

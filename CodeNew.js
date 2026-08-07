@@ -93,8 +93,10 @@ function doGet(e) {
       }
 
     } else if (e.parameter.checkStatus == '1') {
-      // Teacher self-service status lookup
+      // Teacher self-service status lookup - always the signed-in visitor's own
+      // email, never a free-typed one, so this can't be used to look up anyone else's
       template = HtmlService.createTemplateFromFile("StatusLookup.html");
+      template.userEmail = Session.getActiveUser().getEmail();
 
     } else if (e.parameter.dashboard == '1') {
       // Admin dashboard - role is derived from the signed-in Google account, never from a URL param
@@ -112,6 +114,9 @@ function doGet(e) {
       template = HtmlService.createTemplateFromFile("FormNew.html");
       template.formFields = getUserFormFields();
       template.timeSequence = TIME_SEQUENCE_FIELDS;
+      // Pre-fills the Email field client-side (typo prevention) - not enforced,
+      // a teacher can still change it to submit under a different address
+      template.userEmail = Session.getActiveUser().getEmail();
     }
 
     // Served pages are hosted on a sandboxed content domain, not the /exec URL,
