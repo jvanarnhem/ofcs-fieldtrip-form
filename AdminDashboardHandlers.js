@@ -412,3 +412,32 @@ function adminPrintSubmission(submissionNumber) {
     return { success: false, message: 'An error occurred generating the document.' };
   }
 }
+
+/**
+ * Super-admin-only: permanently deletes a trip from Submissions. Unlike reject,
+ * this removes the row entirely rather than changing its status - irreversible,
+ * so the dashboard confirms with the user before calling this.
+ * @param {number} submissionNumber - The submission to delete
+ * @returns {Object} { success }
+ */
+function adminDeleteSubmission(submissionNumber) {
+  try {
+    var ctx = getDashboardContext();
+    if (!ctx.isSuper) {
+      return { success: false, message: 'Only a super admin can delete a trip.' };
+    }
+
+    var submission = findSubmission(submissionNumber);
+    if (!submission) {
+      return { success: false, message: 'Submission not found.' };
+    }
+
+    getAppSpreadsheet().getSheetByName('Submissions').deleteRow(submission.rowIndex);
+    Logger.log('adminDeleteSubmission: ' + ctx.email + ' deleted submission ' + submissionNumber);
+
+    return { success: true };
+  } catch (error) {
+    Logger.log('adminDeleteSubmission error: ' + error);
+    return { success: false, message: 'An error occurred deleting the trip.' };
+  }
+}

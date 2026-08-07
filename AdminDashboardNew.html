@@ -916,6 +916,9 @@
                     actionTd.appendChild(makeActionButton('Print', 'btn-outline-primary', function () {
                         printSubmission(s.submission_number);
                     }));
+                    actionTd.appendChild(makeActionButton('Delete', 'btn-outline-danger', function () {
+                        deleteSubmission(s.submission_number, s.destination);
+                    }));
                 }
 
                 tr.appendChild(actionTd);
@@ -1050,6 +1053,29 @@
                     showAlert('Something went wrong generating the document.', 'danger');
                 })
                 .adminPrintSubmission(submissionNumber);
+        }
+
+        // ---------- Delete (super admin) ----------
+        function deleteSubmission(submissionNumber, destination) {
+            var label = '#' + submissionNumber + (destination ? ' (' + destination + ')' : '');
+            if (!confirm('Delete trip ' + label + '? This cannot be undone.')) {
+                return;
+            }
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    if (!response || !response.success) {
+                        showAlert((response && response.message) || 'Unable to delete the trip.', 'danger');
+                        return;
+                    }
+                    showAlert('Trip ' + label + ' deleted.', 'success');
+                    reloadCurrentTab();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('adminDeleteSubmission failed:', error);
+                    showAlert('Something went wrong deleting the trip.', 'danger');
+                })
+                .adminDeleteSubmission(submissionNumber);
         }
 
         // ---------- Create / Edit trip modal (super admin) ----------
