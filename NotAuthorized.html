@@ -31,6 +31,25 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
+        }
+
+        .open-form-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            text-decoration: none;
+        }
+
+        .open-form-btn:hover {
+            background: rgba(255,255,255,0.3);
+            color: #fff;
         }
 
         .done-header svg {
@@ -60,6 +79,7 @@
     <div class="container" style="max-width: 600px;">
         <div class="done-container">
             <div class="done-header">
+                <a href="<?!= webAppUrl ?>" target="_blank" rel="noopener" class="open-form-btn">Open Form ↗</a>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-lock" viewBox="0 0 16 16">
   <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/>
 </svg>

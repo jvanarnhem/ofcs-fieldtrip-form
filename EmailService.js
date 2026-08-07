@@ -45,6 +45,7 @@ function formatEmailDate(dateValue) {
 function sendBuildingAdminNotification(submissionNumber, formData, adminEmail, adminName) {
   var approvalUrl = ScriptApp.getService().getUrl() +
     '?idNum=' + submissionNumber + '&action=buildingReview';
+  var dashboardUrl = ScriptApp.getService().getUrl() + '?dashboard=1';
 
   var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
   htmlBody += '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center;">';
@@ -68,6 +69,7 @@ function sendBuildingAdminNotification(submissionNumber, formData, adminEmail, a
 
   htmlBody += '<div style="text-align: center; margin: 30px 0;">';
   htmlBody += '<a href="' + approvalUrl + '" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Review Application</a>';
+  htmlBody += '<p style="margin-top: 15px;"><a href="' + dashboardUrl + '" style="color: #667eea;">Or view all pending trips in the dashboard</a></p>';
   htmlBody += '</div>';
 
   htmlBody += '<p style="color: #6c757d; font-size: 14px;">Please review this application at your earliest convenience. Click the button above to view full details and provide your approval decision.</p>';
@@ -166,6 +168,7 @@ function sendSubmitterConfirmation(submissionNumber, formData, submissionDoc) {
 function sendDistrictAdminNotification(submissionNumber, formData, buildingComments, districtEmail) {
   var approvalUrl = ScriptApp.getService().getUrl() +
     '?idNum=' + submissionNumber + '&action=districtReview';
+  var dashboardUrl = ScriptApp.getService().getUrl() + '?dashboard=1';
 
   var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
   htmlBody += '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center;">';
@@ -196,6 +199,7 @@ function sendDistrictAdminNotification(submissionNumber, formData, buildingComme
 
   htmlBody += '<div style="text-align: center; margin: 30px 0;">';
   htmlBody += '<a href="' + approvalUrl + '" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Review Application</a>';
+  htmlBody += '<p style="margin-top: 15px;"><a href="' + dashboardUrl + '" style="color: #667eea;">Or view all pending trips in the dashboard</a></p>';
   htmlBody += '</div>';
 
   htmlBody += '</div>';

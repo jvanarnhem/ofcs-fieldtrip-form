@@ -230,17 +230,17 @@ function appendSubmission(formData) {
 }
 
 /**
- * Finds a submission by submission number
+ * Finds a submission by submission number in the Submissions sheet (every trip
+ * the app itself has ever created lives there - see Archives for pre-cutover
+ * legacy history, which nothing in the live workflow reads from)
  * @param {number} submissionNumber - The unique submission number
- * @param {string} sheetName - Name of sheet to search (default: 'Submissions')
  * @returns {Object|null} Object containing row data and row index, or null if not found
  */
-function findSubmission(submissionNumber, sheetName) {
-  sheetName = sheetName || 'Submissions';
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+function findSubmission(submissionNumber) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
 
   if (!sheet) {
-    Logger.log('Sheet not found: ' + sheetName);
+    Logger.log('Sheet not found: Submissions');
     return null;
   }
 
@@ -269,22 +269,20 @@ function findSubmission(submissionNumber, sheetName) {
 }
 
 /**
- * Updates a submission's status and other fields
+ * Updates a submission's status and other fields in the Submissions sheet
  * @param {number} submissionNumber - The submission to update
  * @param {Object} updates - Object containing fields to update
- * @param {string} sheetName - Name of sheet the submission lives in (default: 'Submissions')
  * @returns {boolean} Success status
  */
-function updateSubmission(submissionNumber, updates, sheetName) {
-  sheetName = sheetName || 'Submissions';
-  var submission = findSubmission(submissionNumber, sheetName);
+function updateSubmission(submissionNumber, updates) {
+  var submission = findSubmission(submissionNumber);
 
   if (!submission) {
-    Logger.log('Submission not found: ' + submissionNumber + ' in ' + sheetName);
+    Logger.log('Submission not found: ' + submissionNumber);
     return false;
   }
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
   var columnMapping = getColumnMapping(sheet);
 
   // Update each field
@@ -303,32 +301,30 @@ function updateSubmission(submissionNumber, updates, sheetName) {
 }
 
 /**
- * Moves a submission from Submissions to Completed sheet
- * @param {number} submissionNumber - The submission to move
- * @returns {boolean} Success status
+ * Normalizes a trip_date value (Date object or "YYYY-MM-DD"-ish string) to a
+ * plain "YYYY-MM-DD" string, so it can be compared/sorted as text
+ * @param {Date|string} tripDate
+ * @returns {string|null} "YYYY-MM-DD", or null if unparseable
  */
-function moveToCompleted(submissionNumber) {
-  var submission = findSubmission(submissionNumber);
+function normalizeTripDateString(tripDate) {
+  if (!tripDate) return null;
+  var d = tripDate instanceof Date ? tripDate : new Date(tripDate);
+  if (isNaN(d)) return null;
 
-  if (!submission) {
-    Logger.log('Submission not found: ' + submissionNumber);
-    return false;
-  }
+  var mm = ('0' + (d.getMonth() + 1)).slice(-2);
+  var dd = ('0' + d.getDate()).slice(-2);
+  return d.getFullYear() + '-' + mm + '-' + dd;
+}
 
-  var submissionsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
-  var completedSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Completed');
-
-  // Ensure completed sheet has same columns
-  ensureColumnsExist(completedSheet);
-
-  // Copy row to completed sheet
-  var columnMapping = getColumnMapping(submissionsSheet);
-  completedSheet.appendRow(submission.rowData);
-
-  // Delete from submissions sheet
-  submissionsSheet.deleteRow(submission.rowIndex);
-
-  return true;
+/**
+ * Whether a trip_date falls before the archive cutover (Config.js's ARCHIVE_CUTOFF_DATE) -
+ * true means it belongs in the Archives sheet, not Submissions
+ * @param {Date|string} tripDate
+ * @returns {boolean}
+ */
+function isArchivedTripDate(tripDate) {
+  var normalized = normalizeTripDateString(tripDate);
+  return !!normalized && normalized < ARCHIVE_CUTOFF_DATE;
 }
 
 /**

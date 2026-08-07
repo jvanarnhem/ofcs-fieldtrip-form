@@ -266,6 +266,11 @@ var FORM_SCHEMA = {
     columnHeader: 'Building_Approval_Date',
     systemGenerated: true
   },
+  building_reviewed_by: {
+    type: 'text',
+    columnHeader: 'Building_Reviewed_By',
+    systemGenerated: true
+  },
   district_comments: {
     type: 'textarea',
     columnHeader: 'District_Comments',
@@ -274,6 +279,11 @@ var FORM_SCHEMA = {
   district_approval_date: {
     type: 'date',
     columnHeader: 'District_Approval_Date',
+    systemGenerated: true
+  },
+  district_reviewed_by: {
+    type: 'text',
+    columnHeader: 'District_Reviewed_By',
     systemGenerated: true
   },
   approval_doc_url: {
@@ -289,6 +299,14 @@ var FORM_SCHEMA = {
  * in ValidationUtils.js and FormNew.html.
  */
 var TIME_SEQUENCE_FIELDS = ['leave_school', 'arrive_destination', 'leave_destination', 'arrive_school'];
+
+/**
+ * Trips with a trip_date before this cutover live in the "Archives" sheet
+ * (browsed by year in the dashboard); trips on/after it live in "Submissions"
+ * alongside everything actively being worked. This is when the rewritten app
+ * went live - a one-time boundary, not a rolling window.
+ */
+var ARCHIVE_CUTOFF_DATE = '2026-06-01';
 
 /**
  * Status values for the approval workflow

@@ -69,8 +69,11 @@ function submitFieldTripForm(formDataJson) {
         break;
     }
 
-    // Send notification email to building admin
-    sendBuildingAdminNotification(submissionNumber, formData, adminEmail, adminName);
+    // Send notification email to building admin, unless this building is set to a daily
+    // digest instead of an email per submission (see DigestService.js's sendDailyDigests)
+    if ((settings[building + '_NOTIFY_MODE'] || 'instant') !== 'digest') {
+      sendBuildingAdminNotification(submissionNumber, formData, adminEmail, adminName);
+    }
 
     // Generate initial submission PDF BEFORE sending confirmation email
     var initialDoc = null;
@@ -119,35 +122,55 @@ function approveBuildingAdmin(approvalDataJson) {
     var action = data.action; // 'approve' or 'reject'
     var comments = sanitizeInput(data.comments || '');
 
-    var submission = findSubmission(submissionNumber);
+    // Lock around the read-check-write "claim" so two overlapping calls (double
+    // click, two admins, two tabs) can't both pass the pending check before
+    // either write lands - mirrors the lock appendSubmission uses on insert.
+    var lock = LockService.getScriptLock();
+    lock.waitLock(30000);
 
-    if (!submission) {
-      return {
-        success: false,
-        message: 'Submission not found or has already been processed'
-      };
-    }
+    var submission;
+    try {
+      submission = findSubmission(submissionNumber);
 
-    // Check if already reviewed
-    var currentStatus = submission.dataObject.status;
-    if (currentStatus !== STATUS_VALUES.PENDING_BUILDING) {
-      return {
-        success: false,
-        message: 'This application has already been reviewed. Current status: ' + currentStatus,
-        alreadyReviewed: true
-      };
+      if (!submission) {
+        return {
+          success: false,
+          message: 'Submission not found or has already been processed'
+        };
+      }
+
+      // Check if already reviewed
+      var currentStatus = submission.dataObject.status;
+      if (currentStatus !== STATUS_VALUES.PENDING_BUILDING) {
+        return {
+          success: false,
+          message: 'This application has already been reviewed. Current status: ' + currentStatus,
+          alreadyReviewed: true
+        };
+      }
+
+      if (action === 'reject') {
+        updateSubmission(submissionNumber, {
+          status: STATUS_VALUES.REJECTED,
+          building_comments: comments,
+          building_approval_date: new Date(),
+          building_reviewed_by: Session.getActiveUser().getEmail()
+        });
+      } else if (action === 'approve') {
+        updateSubmission(submissionNumber, {
+          status: STATUS_VALUES.PENDING_DISTRICT,
+          building_comments: comments,
+          building_approval_date: new Date(),
+          building_reviewed_by: Session.getActiveUser().getEmail()
+        });
+      }
+    } finally {
+      lock.releaseLock();
     }
 
     var settings = getSettings();
 
     if (action === 'reject') {
-      // Update status to rejected
-      updateSubmission(submissionNumber, {
-        status: STATUS_VALUES.REJECTED,
-        building_comments: comments,
-        building_approval_date: new Date()
-      });
-
       // Send rejection email to submitter
       sendRejectionEmail(submission.dataObject, comments, 'Building Administrator');
 
@@ -157,13 +180,6 @@ function approveBuildingAdmin(approvalDataJson) {
       };
 
     } else if (action === 'approve') {
-      // Update status to pending district approval
-      updateSubmission(submissionNumber, {
-        status: STATUS_VALUES.PENDING_DISTRICT,
-        building_comments: comments,
-        building_approval_date: new Date()
-      });
-
       // Send notification to district admin
       sendDistrictAdminNotification(submissionNumber, submission.dataObject, comments, settings.DISTRICT_EMAIL);
 
@@ -194,35 +210,55 @@ function approveDistrictAdmin(approvalDataJson) {
     var action = data.action; // 'approve' or 'reject'
     var comments = sanitizeInput(data.comments || '');
 
-    var submission = findSubmission(submissionNumber);
+    // Lock around the read-check-write "claim" so two overlapping calls (double
+    // click, two admins, two tabs) can't both pass the pending check before
+    // either write lands - mirrors the lock appendSubmission uses on insert.
+    var lock = LockService.getScriptLock();
+    lock.waitLock(30000);
 
-    if (!submission) {
-      return {
-        success: false,
-        message: 'Submission not found or has already been processed'
-      };
-    }
+    var submission;
+    try {
+      submission = findSubmission(submissionNumber);
 
-    // Check if already reviewed
-    var currentStatus = submission.dataObject.status;
-    if (currentStatus !== STATUS_VALUES.PENDING_DISTRICT) {
-      return {
-        success: false,
-        message: 'This application has already been reviewed. Current status: ' + currentStatus,
-        alreadyReviewed: true
-      };
+      if (!submission) {
+        return {
+          success: false,
+          message: 'Submission not found or has already been processed'
+        };
+      }
+
+      // Check if already reviewed
+      var currentStatus = submission.dataObject.status;
+      if (currentStatus !== STATUS_VALUES.PENDING_DISTRICT) {
+        return {
+          success: false,
+          message: 'This application has already been reviewed. Current status: ' + currentStatus,
+          alreadyReviewed: true
+        };
+      }
+
+      if (action === 'reject') {
+        updateSubmission(submissionNumber, {
+          status: STATUS_VALUES.REJECTED,
+          district_comments: comments,
+          district_approval_date: new Date(),
+          district_reviewed_by: Session.getActiveUser().getEmail()
+        });
+      } else if (action === 'approve') {
+        updateSubmission(submissionNumber, {
+          status: STATUS_VALUES.APPROVED,
+          district_comments: comments,
+          district_approval_date: new Date(),
+          district_reviewed_by: Session.getActiveUser().getEmail()
+        });
+      }
+    } finally {
+      lock.releaseLock();
     }
 
     var settings = getSettings();
 
     if (action === 'reject') {
-      // Update status to rejected
-      updateSubmission(submissionNumber, {
-        status: STATUS_VALUES.REJECTED,
-        district_comments: comments,
-        district_approval_date: new Date()
-      });
-
       // Send rejection email to submitter
       sendRejectionEmail(submission.dataObject, comments, 'District Administrator');
 
@@ -232,18 +268,7 @@ function approveDistrictAdmin(approvalDataJson) {
       };
 
     } else if (action === 'approve') {
-      // Update status to approved first
-      updateSubmission(submissionNumber, {
-        status: STATUS_VALUES.APPROVED,
-        district_comments: comments,
-        district_approval_date: new Date()
-      });
-
-      // Move to completed sheet BEFORE generating document
-      // (so the merge function can find it in the Completed sheet)
-      moveToCompleted(submissionNumber);
-
-      // Generate final approval document AFTER moving to Completed
+      // Generate final approval document (status is already Approved from the locked claim above)
       var approvalDoc = null;
       var approvalDocUrl = '';
       if (settings.DESTINATION_FOLDER_ID && settings.TEMPLATE_ID) {
@@ -257,17 +282,7 @@ function approveDistrictAdmin(approvalDataJson) {
           );
           if (approvalDoc) {
             approvalDocUrl = approvalDoc.getUrl();
-
-            // Update the Completed sheet with the document URL
-            var completedSubmission = findSubmission(submissionNumber, 'Completed');
-            if (completedSubmission) {
-              var completedSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Completed');
-              var columnMapping = getColumnMapping(completedSheet);
-              var urlColIndex = columnMapping['Approval_Document_URL'];
-              if (urlColIndex !== undefined) {
-                completedSheet.getRange(completedSubmission.rowIndex, urlColIndex + 1).setValue(approvalDocUrl);
-              }
-            }
+            updateSubmission(submissionNumber, { approval_doc_url: approvalDocUrl });
           }
         } catch (pdfError) {
           Logger.log('PDF generation error: ' + pdfError);
@@ -285,8 +300,8 @@ function approveDistrictAdmin(approvalDataJson) {
 
       // Add to calendar if configured
       try {
-        if (settings.CALENDAR_ID) {
-          addToCalendar(submission.dataObject);
+        if (settings.CALENDAR_NAME) {
+          addToCalendar(submission.dataObject, settings.CALENDAR_NAME, approvalDocUrl);
         }
       } catch (calError) {
         Logger.log('Calendar add error: ' + calError);
@@ -308,68 +323,6 @@ function approveDistrictAdmin(approvalDataJson) {
 }
 
 /**
- * Gets submission data for admin interfaces
- * @param {number} submissionNumber - The submission number
- * @returns {Object} Submission data
- */
-function getSubmissionData(submissionNumber) {
-  var submission = findSubmission(submissionNumber);
-
-  if (!submission) {
-    return {
-      success: false,
-      message: 'Submission not found'
-    };
-  }
-
-  return {
-    success: true,
-    data: submission.dataObject
-  };
-}
-
-/**
- * Gets every submission still awaiting building or district action, for the admin dashboard
- * @returns {Object} Response object with success status and pending submissions
- */
-function getPendingSubmissions() {
-  try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
-    var columnMapping = getColumnMapping(sheet);
-    var data = sheet.getDataRange().getValues();
-
-    var pendingStatuses = [STATUS_VALUES.PENDING_BUILDING, STATUS_VALUES.PENDING_DISTRICT];
-    var results = [];
-
-    for (var i = 1; i < data.length; i++) {
-      var rowObj = rowToObject(data[i], columnMapping);
-      if (pendingStatuses.indexOf(rowObj.status) !== -1) {
-        results.push(rowObj);
-      }
-    }
-
-    results.sort(function (a, b) {
-      return a.submission_number - b.submission_number;
-    });
-
-    // Returned as a JSON string, not a plain object: google.script.run's own object
-    // serialization is unreliable for arrays containing Date values (Sheets auto-converts
-    // date-looking cells to real dates), so we do the serialization ourselves.
-    return JSON.stringify({
-      success: true,
-      submissions: results
-    });
-
-  } catch (error) {
-    Logger.log('getPendingSubmissions error: ' + error);
-    return JSON.stringify({
-      success: false,
-      message: 'An error occurred loading pending applications.'
-    });
-  }
-}
-
-/**
  * Looks up all applications submitted under a given email address
  * Searches both the Submissions (pending/rejected) and Completed (approved) sheets
  * @param {string} email - Teacher's email address used on the application(s)
@@ -387,12 +340,9 @@ function getMySubmissions(email) {
     }
 
     var results = [];
-    var sheetNames = ['Submissions', 'Completed'];
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
 
-    for (var s = 0; s < sheetNames.length; s++) {
-      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetNames[s]);
-      if (!sheet) continue;
-
+    if (sheet) {
       var columnMapping = getColumnMapping(sheet);
       var data = sheet.getDataRange().getValues();
 

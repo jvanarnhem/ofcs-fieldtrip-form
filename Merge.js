@@ -24,8 +24,6 @@ function doMerge(subNumber, adultInCharge, folderID, spreadsheetID, templateID) 
   // This ensures we always read from the correct spreadsheet
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
 
-  // Check Completed sheet first, then Submissions sheet
-  var completedSheet = spreadsheet.getSheetByName('Completed');
   var submissionsSheet = spreadsheet.getSheetByName('Submissions');
 
   var sheet = null;
@@ -33,23 +31,7 @@ function doMerge(subNumber, adultInCharge, folderID, spreadsheetID, templateID) 
   var fieldNames = null;
   var rowFound = null;
 
-  // Try Completed sheet first
-  if (completedSheet) {
-    data = completedSheet.getDataRange().getValues();
-    fieldNames = data[0];
-
-    // Check if submission number exists in Completed
-    for (var i = 1; i < data.length; i++) {
-      if (data[i][0] == subNumber) {
-        rowFound = data[i];
-        sheet = completedSheet;
-        break;
-      }
-    }
-  }
-
-  // If not found in Completed, try Submissions
-  if (!rowFound && submissionsSheet) {
+  if (submissionsSheet) {
     data = submissionsSheet.getDataRange().getValues();
     fieldNames = data[0];
 
@@ -64,7 +46,6 @@ function doMerge(subNumber, adultInCharge, folderID, spreadsheetID, templateID) 
 
   if (!rowFound) {
     Logger.log('Could not find data for submission: ' + subNumber);
-    Logger.log('Searched in Completed and Submissions sheets');
     mergedDoc.saveAndClose();
     return mergedDoc;
   }

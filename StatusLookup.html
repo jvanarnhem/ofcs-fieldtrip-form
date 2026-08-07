@@ -28,6 +28,25 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
+        }
+
+        .open-form-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            text-decoration: none;
+        }
+
+        .open-form-btn:hover {
+            background: rgba(255,255,255,0.3);
+            color: #fff;
         }
 
         .lookup-header h1 {
@@ -49,6 +68,7 @@
     <div class="container" style="max-width: 800px;">
         <div class="lookup-container">
             <div class="lookup-header">
+                <a href="<?!= webAppUrl ?>" target="_blank" rel="noopener" class="open-form-btn">Open Form ↗</a>
                 <h1>Check Application Status</h1>
                 <p class="mb-0">Field Trip Application</p>
             </div>

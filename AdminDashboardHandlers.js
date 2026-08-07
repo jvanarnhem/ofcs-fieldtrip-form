@@ -60,9 +60,24 @@ function getPendingForMe() {
 }
 
 /**
- * Gets submission history scoped to the signed-in admin, with status/building/text filters
- * @param {string} filterJson - JSON string: { status, building, search }
- * @returns {string} JSON string: { success, submissions }
+ * Gets the calendar year a trip falls in, from a trip_date that may come back
+ * from the sheet as either a real Date object or a "YYYY-MM-DD" string
+ * @param {Date|string} tripDate - The trip date
+ * @returns {number|null} Four-digit year, or null if it can't be determined
+ */
+function getTripYear(tripDate) {
+  if (!tripDate) return null;
+  if (tripDate instanceof Date) return tripDate.getFullYear();
+  var parts = String(tripDate).split('-');
+  return parts.length ? parseInt(parts[0], 10) : null;
+}
+
+/**
+ * Gets submission history scoped to the signed-in admin, with status/building/year/text filters
+ * @param {string} filterJson - JSON string: { status, building, search, year, scope }
+ *   scope: 'current' (default) reads Submissions (everything since the ARCHIVE_CUTOFF_DATE
+ *   rewrite went live); 'archive' reads Archives (pre-cutover legacy trips, year-filterable)
+ * @returns {string} JSON string: { success, submissions, years }
  */
 function getHistory(filterJson) {
   try {
@@ -75,14 +90,15 @@ function getHistory(filterJson) {
     var statusFilter = filter.status || 'All';
     var buildingFilter = filter.building || '';
     var searchText = String(filter.search || '').trim().toLowerCase();
+    var yearFilter = filter.year || 'All';
+    var scope = filter.scope === 'archive' ? 'archive' : 'current';
+
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(scope === 'archive' ? 'Archives' : 'Submissions');
 
     var results = [];
-    var sheetNames = ['Submissions', 'Completed'];
+    var yearsSeen = {};
 
-    for (var s = 0; s < sheetNames.length; s++) {
-      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetNames[s]);
-      if (!sheet) continue;
-
+    if (sheet) {
       var columnMapping = getColumnMapping(sheet);
       var data = sheet.getDataRange().getValues();
 
@@ -90,6 +106,18 @@ function getHistory(filterJson) {
         var rowObj = rowToObject(data[i], columnMapping);
 
         if (!ctx.isDistrict && !ctx.isSuper && ctx.buildings.indexOf(rowObj.building) === -1) {
+          continue;
+        }
+
+        // Collected before the year filter is applied, so the year picker always
+        // lists every year this admin can see, regardless of which one is selected
+        var rowYear = getTripYear(rowObj.trip_date);
+        if (rowYear) {
+          yearsSeen[rowYear] = true;
+        }
+
+        // Only Archives is year-filterable - Current is just "everything since cutover"
+        if (scope === 'archive' && yearFilter !== 'All' && String(rowYear) !== String(yearFilter)) {
           continue;
         }
 
@@ -115,7 +143,9 @@ function getHistory(filterJson) {
 
     results.sort(function (a, b) { return b.submission_number - a.submission_number; });
 
-    return JSON.stringify({ success: true, submissions: results });
+    var years = Object.keys(yearsSeen).sort(function (a, b) { return b - a; });
+
+    return JSON.stringify({ success: true, submissions: results, years: years });
   } catch (error) {
     Logger.log('getHistory error: ' + error);
     return JSON.stringify({ success: false, message: 'An error occurred loading history.' });
@@ -124,8 +154,8 @@ function getHistory(filterJson) {
 
 /**
  * Bulk approves or rejects a batch of submissions, delegating each row to the existing
- * single-item approveBuildingAdmin/approveDistrictAdmin so email/doMerge/moveToCompleted/
- * calendar side effects stay identical to a normal single-item approval
+ * single-item approveBuildingAdmin/approveDistrictAdmin so email/doMerge/calendar
+ * side effects stay identical to a normal single-item approval
  * @param {string} payloadJson - JSON string: { submissionNumbers: [...], action: 'approve'|'reject', comments }
  * @returns {Object} { success, results: [{id, success, message}, ...] }
  */
@@ -270,28 +300,19 @@ function adminCreateSubmission(formDataJson) {
       return { success: true, submissionNumber: submissionNumber };
     }
 
-    // initialStatus === Approved - move to Completed and generate the approval doc,
-    // matching what a real district approval does. No calendar event for backfilled/past
-    // trips: see CalendarAdd.js's known argument-mismatch bug, intentionally not touched here.
+    // initialStatus === Approved - generate the approval doc, matching what a real
+    // district approval does. No calendar event for backfilled/past trips: see
+    // CalendarAdd.js's known argument-mismatch bug, intentionally not touched here.
     updateSubmission(submissionNumber, {
       status: STATUS_VALUES.APPROVED,
       district_approval_date: now
     });
-    moveToCompleted(submissionNumber);
 
     if (settings.DESTINATION_FOLDER_ID && settings.TEMPLATE_ID) {
       try {
         var approvalDoc = doMerge(submissionNumber, sanitized.adult_in_charge, settings.DESTINATION_FOLDER_ID, settings.SPREADSHEET_ID, settings.TEMPLATE_ID);
         if (approvalDoc) {
-          var completedSubmission = findSubmission(submissionNumber, 'Completed');
-          if (completedSubmission) {
-            var completedSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Completed');
-            var columnMapping = getColumnMapping(completedSheet);
-            var urlColIndex = columnMapping['Approval_Document_URL'];
-            if (urlColIndex !== undefined) {
-              completedSheet.getRange(completedSubmission.rowIndex, urlColIndex + 1).setValue(approvalDoc.getUrl());
-            }
-          }
+          updateSubmission(submissionNumber, { approval_doc_url: approvalDoc.getUrl() });
         }
       } catch (pdfError) {
         Logger.log('adminCreateSubmission doMerge error: ' + pdfError);
@@ -310,7 +331,8 @@ function adminCreateSubmission(formDataJson) {
 }
 
 /**
- * Super-admin-only: edits any field on a trip regardless of which sheet/status it's in
+ * Super-admin-only: edits any field on a trip regardless of status. Archives (pre-cutover
+ * legacy history) isn't editable here - only current trips in Submissions.
  * @param {number} submissionNumber - The submission to edit
  * @param {string} updatesJson - JSON string of field updates
  * @returns {Object} { success }
@@ -322,13 +344,7 @@ function adminEditSubmission(submissionNumber, updatesJson) {
       return { success: false, message: 'Only a super admin can edit a trip directly.' };
     }
 
-    var sheetName = 'Submissions';
-    var submission = findSubmission(submissionNumber, sheetName);
-
-    if (!submission) {
-      sheetName = 'Completed';
-      submission = findSubmission(submissionNumber, sheetName);
-    }
+    var submission = findSubmission(submissionNumber);
 
     if (!submission) {
       return { success: false, message: 'Submission not found.' };
@@ -352,7 +368,7 @@ function adminEditSubmission(submissionNumber, updatesJson) {
       updates.day_of_week = days[tripDate.getDay()];
     }
 
-    updateSubmission(submissionNumber, updates, sheetName);
+    updateSubmission(submissionNumber, updates);
 
     return { success: true };
   } catch (error) {
@@ -363,8 +379,7 @@ function adminEditSubmission(submissionNumber, updatesJson) {
 
 /**
  * Super-admin-only: generates (or regenerates) the official merged Doc for a trip so it can
- * be opened and printed. Works on pending trips too - doMerge already falls back to the
- * Submissions sheet when a row isn't in Completed yet.
+ * be opened and printed. Works on pending trips too, since it's all one Submissions sheet.
  * @param {number} submissionNumber - The submission to print
  * @returns {Object} { success, url }
  */
@@ -375,7 +390,7 @@ function adminPrintSubmission(submissionNumber) {
       return { success: false, message: 'Only a super admin can print a trip from the dashboard.' };
     }
 
-    var submission = findSubmission(submissionNumber, 'Completed') || findSubmission(submissionNumber, 'Submissions');
+    var submission = findSubmission(submissionNumber);
     if (!submission) {
       return { success: false, message: 'Submission not found.' };
     }

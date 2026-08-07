@@ -29,6 +29,25 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
+        }
+
+        .open-form-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            text-decoration: none;
+        }
+
+        .open-form-btn:hover {
+            background: rgba(255,255,255,0.3);
+            color: #fff;
         }
 
         .dashboard-header h1 {
@@ -102,6 +121,7 @@
     <div class="container-fluid" style="max-width: 1200px;">
         <div class="dashboard-container">
             <div class="dashboard-header">
+                <a href="<?!= webAppUrl ?>" target="_blank" rel="noopener" class="open-form-btn">Open Form ↗</a>
                 <h1>Admin Dashboard</h1>
                 <p class="mb-0" id="roleLine">Field Trip Application</p>
             </div>
@@ -124,10 +144,16 @@
                     <button type="button" class="btn btn-submit" id="createTripBtn" style="display:none;">+ Create Trip</button>
                 </div>
 
+                <div class="btn-group mb-3" id="historyScopeToggle" role="group" style="display:none;">
+                    <button type="button" class="btn btn-outline-secondary quick-filter-btn active" data-scope="current">Current</button>
+                    <button type="button" class="btn btn-outline-secondary quick-filter-btn" data-scope="archive">Archives</button>
+                </div>
+
                 <div class="btn-group mb-3 flex-wrap" id="historyStatusTabs" role="group" style="display:none;"></div>
 
                 <div class="d-flex flex-wrap gap-2 align-items-center mb-3" id="filterBar">
                     <div class="btn-group" id="buildingFilterGroup" role="group" style="display:none;"></div>
+                    <select class="form-select" id="historyYearSelect" style="display:none; max-width: 140px;"></select>
                     <input type="text" class="form-control" id="searchInput" placeholder="Search destination, name, email, #..." style="max-width: 280px;">
                     <div class="text-muted ms-auto" id="countLabel"></div>
                 </div>
@@ -141,6 +167,7 @@
                 </div>
 
                 <div id="resultsArea"><p class="text-muted">Loading...</p></div>
+                <div class="d-flex justify-content-center align-items-center gap-2 mt-3" id="historyPagination"></div>
 
                 <div id="settingsArea" style="display:none;">
                     <div id="settingsAlert"></div>
@@ -366,6 +393,11 @@
         var pendingData = [];
         var historyData = [];
         var historyLoaded = false;
+        var historyScope = 'current'; // 'current' (Submissions) or 'archive' (Archives, year-pickable)
+        var historyYear = String(new Date().getFullYear());
+        var historyYears = [];
+        var historyPage = 1;
+        var HISTORY_PAGE_SIZE = 25;
         var settingsLoaded = false;
         var rosterAdmins = [];
         var rosterCanManageAll = false;
@@ -495,6 +527,7 @@
                 buildingQuickFilter = value;
                 document.querySelectorAll('.quick-filter-btn').forEach(function (b) { b.classList.remove('active'); });
                 btn.classList.add('active');
+                historyPage = 1;
                 render();
             });
             return btn;
@@ -511,6 +544,8 @@
                 var isSettings = currentTab === 'settings';
 
                 document.getElementById('historyStatusTabs').style.display = (currentTab === 'history') ? '' : 'none';
+                document.getElementById('historyScopeToggle').style.display = (currentTab === 'history') ? '' : 'none';
+                document.getElementById('historyYearSelect').style.display = (currentTab === 'history' && historyScope === 'archive') ? '' : 'none';
                 document.getElementById('bulkActionBar').classList.add('d-none');
                 document.getElementById('filterBar').classList.toggle('d-none', isSettings);
                 document.getElementById('resultsArea').style.display = isSettings ? 'none' : '';
@@ -543,14 +578,55 @@
                     historyStatusFilter = status;
                     wrap.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
                     btn.classList.add('active');
+                    historyPage = 1;
                     render();
                 });
                 wrap.appendChild(btn);
             });
         }
 
+        function renderHistoryYearOptions() {
+            var select = document.getElementById('historyYearSelect');
+            select.innerHTML = '';
+
+            var years = historyYears.indexOf(historyYear) === -1 ? [historyYear].concat(historyYears) : historyYears;
+            years.forEach(function (year) {
+                var opt = document.createElement('option');
+                opt.value = year;
+                opt.textContent = year;
+                if (year === historyYear) opt.selected = true;
+                select.appendChild(opt);
+            });
+
+            var allOpt = document.createElement('option');
+            allOpt.value = 'All';
+            allOpt.textContent = 'All Years';
+            if (historyYear === 'All') allOpt.selected = true;
+            select.appendChild(allOpt);
+        }
+
+        document.getElementById('historyYearSelect').addEventListener('change', function (e) {
+            historyYear = e.target.value;
+            historyPage = 1;
+            historyLoaded = false;
+            loadHistory();
+        });
+
+        document.querySelectorAll('#historyScopeToggle button').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                historyScope = btn.getAttribute('data-scope');
+                document.querySelectorAll('#historyScopeToggle button').forEach(function (b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                document.getElementById('historyYearSelect').style.display = historyScope === 'archive' ? '' : 'none';
+                historyPage = 1;
+                historyLoaded = false;
+                loadHistory();
+            });
+        });
+
         document.getElementById('searchInput').addEventListener('input', function (e) {
             searchText = e.target.value.trim().toLowerCase();
+            historyPage = 1;
             render();
         });
 
@@ -594,14 +670,16 @@
                     }
 
                     historyData = result.submissions || [];
+                    historyYears = result.years || [];
                     historyLoaded = true;
+                    renderHistoryYearOptions();
                     render();
                 })
                 .withFailureHandler(function (error) {
                     console.error('getHistory failed:', error);
                     document.getElementById('resultsArea').innerHTML = '<div class="alert alert-danger">Something went wrong loading history.</div>';
                 })
-                .getHistory(JSON.stringify({ status: 'All', building: '', search: '' }));
+                .getHistory(JSON.stringify({ status: 'All', building: '', search: '', year: historyYear, scope: historyScope }));
         }
 
         // ---------- Filtering + rendering ----------
@@ -626,12 +704,56 @@
 
         function render() {
             var filtered = applyFilters(currentDataset());
+            var displayRows = filtered;
 
             document.getElementById('countLabel').textContent =
                 filtered.length + (filtered.length === 1 ? ' application' : ' applications');
 
-            renderTable(filtered);
+            if (currentTab === 'history') {
+                var totalPages = Math.max(1, Math.ceil(filtered.length / HISTORY_PAGE_SIZE));
+                if (historyPage > totalPages) historyPage = totalPages;
+                var start = (historyPage - 1) * HISTORY_PAGE_SIZE;
+                displayRows = filtered.slice(start, start + HISTORY_PAGE_SIZE);
+            }
+
+            renderTable(displayRows);
             renderBulkBar(filtered);
+            renderHistoryPagination(filtered.length);
+        }
+
+        function renderHistoryPagination(totalCount) {
+            var wrap = document.getElementById('historyPagination');
+
+            if (currentTab !== 'history' || totalCount === 0) {
+                wrap.innerHTML = '';
+                return;
+            }
+
+            var totalPages = Math.max(1, Math.ceil(totalCount / HISTORY_PAGE_SIZE));
+
+            wrap.innerHTML = '';
+
+            var prevBtn = document.createElement('button');
+            prevBtn.type = 'button';
+            prevBtn.className = 'btn btn-outline-secondary btn-sm';
+            prevBtn.textContent = 'Previous';
+            prevBtn.disabled = historyPage <= 1;
+            prevBtn.addEventListener('click', function () { historyPage--; render(); });
+
+            var label = document.createElement('span');
+            label.className = 'text-muted small';
+            label.textContent = 'Page ' + historyPage + ' of ' + totalPages;
+
+            var nextBtn = document.createElement('button');
+            nextBtn.type = 'button';
+            nextBtn.className = 'btn btn-outline-secondary btn-sm';
+            nextBtn.textContent = 'Next';
+            nextBtn.disabled = historyPage >= totalPages;
+            nextBtn.addEventListener('click', function () { historyPage++; render(); });
+
+            wrap.appendChild(prevBtn);
+            wrap.appendChild(label);
+            wrap.appendChild(nextBtn);
         }
 
         function renderTable(rows) {
@@ -1033,6 +1155,31 @@
             return wrap;
         }
 
+        function makeNotifyModeField(id, value) {
+            var wrap = document.createElement('div');
+            wrap.className = 'mb-2';
+
+            var lbl = document.createElement('label');
+            lbl.className = 'form-label small mb-1';
+            lbl.setAttribute('for', id);
+            lbl.textContent = 'Notifications';
+
+            var select = document.createElement('select');
+            select.className = 'form-select form-select-sm';
+            select.id = id;
+            [['instant', 'Instant (each trip)'], ['digest', 'Daily digest']].forEach(function (opt) {
+                var option = document.createElement('option');
+                option.value = opt[0];
+                option.textContent = opt[1];
+                if (opt[0] === value) option.selected = true;
+                select.appendChild(option);
+            });
+
+            wrap.appendChild(lbl);
+            wrap.appendChild(select);
+            return wrap;
+        }
+
         function renderSettingsForm(response) {
             var globalSection = document.getElementById('globalSettingsSection');
             var globalFields = document.getElementById('globalSettingsFields');
@@ -1065,6 +1212,15 @@
                 card.appendChild(makeSettingField('b_' + code + '_ADMIN', 'Admin Name', b.admin, true));
                 card.appendChild(makeSettingField('b_' + code + '_EMAIL', 'Admin Email', b.email, true));
 
+                if (ctx.isSuper) {
+                    card.appendChild(makeNotifyModeField('b_' + code + '_NOTIFY_MODE', b.notifyMode));
+                } else {
+                    var modeLabel = document.createElement('div');
+                    modeLabel.className = 'small text-muted mt-1';
+                    modeLabel.textContent = 'Notifications: ' + (b.notifyMode === 'digest' ? 'Daily digest' : 'Instant (each trip)');
+                    card.appendChild(modeLabel);
+                }
+
                 col.appendChild(card);
                 buildingFields.appendChild(col);
             });
@@ -1077,7 +1233,7 @@
                 updates[input.id.replace(/^g_/, '')] = input.value;
             });
 
-            document.querySelectorAll('#buildingSettingsFields input').forEach(function (input) {
+            document.querySelectorAll('#buildingSettingsFields input, #buildingSettingsFields select').forEach(function (input) {
                 updates[input.id.replace(/^b_/, '')] = input.value;
             });
 

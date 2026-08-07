@@ -40,35 +40,43 @@ function doGet(e) {
   var template;
 
   // Emailed review links carry ?action=<key> instead of magic numbers;
-  // each entry maps the pending status to check against the template to render.
+  // each entry maps the pending status to check against the template to render,
+  // plus who is allowed to act at that stage (same rules as the dashboard RPCs).
   var REVIEW_ACTIONS = {
     buildingReview: {
       pendingStatus: STATUS_VALUES.PENDING_BUILDING,
-      templateFile: "BuildingAdminNew.html"
+      templateFile: "BuildingAdminNew.html",
+      canAct: function (ctx, submission) {
+        return canActOnBuildingStage(ctx, submission.dataObject.building);
+      }
     },
     districtReview: {
       pendingStatus: STATUS_VALUES.PENDING_DISTRICT,
-      templateFile: "DistrictAdminNew.html"
+      templateFile: "DistrictAdminNew.html",
+      canAct: function (ctx, submission) {
+        return canActOnDistrictStage(ctx);
+      }
     }
   };
 
   try {
-    if (action === 'reject') {
-      // Quick reject (legacy support)
-      updateSubmission(idVal, {
-        status: STATUS_VALUES.REJECTED
-      });
-      return ContentService.createTextOutput("Application rejected!");
-
-    } else if (REVIEW_ACTIONS.hasOwnProperty(action)) {
+    if (REVIEW_ACTIONS.hasOwnProperty(action)) {
       var reviewAction = REVIEW_ACTIONS[action];
       var submission = findSubmission(idVal);
 
       if (!submission || submission.dataObject.status !== reviewAction.pendingStatus) {
         template = HtmlService.createTemplateFromFile("DoneAlready.html");
       } else {
-        template = HtmlService.createTemplateFromFile(reviewAction.templateFile);
-        template.info = submission.dataObject;
+        // The link itself carries no proof of identity - require the visitor to
+        // actually be the admin (or higher) authorized for this submission's stage,
+        // same as if they'd reached it through the dashboard.
+        var reviewCtx = getAdminContext(Session.getActiveUser().getEmail());
+        if (!reviewCtx.isAdmin || !reviewAction.canAct(reviewCtx, submission)) {
+          template = HtmlService.createTemplateFromFile("NotAuthorized.html");
+        } else {
+          template = HtmlService.createTemplateFromFile(reviewAction.templateFile);
+          template.info = submission.dataObject;
+        }
       }
 
     } else if (e.parameter.checkStatus == '1') {
@@ -108,40 +116,6 @@ function doGet(e) {
     Logger.log('Error stack: ' + error.stack);
     return ContentService.createTextOutput("An error occurred: " + error.message + ". Please check the execution logs.");
   }
-}
-
-/**
- * Legacy update function - kept for backward compatibility
- * New code should use updateSubmission() from DataLayer.js
- */
-function update(submissionNumber, statusCode, comments, docURL) {
-  var updates = {};
-
-  switch (statusCode) {
-    case 1:
-      updates.status = STATUS_VALUES.PENDING_BUILDING;
-      break;
-    case 2:
-      updates.status = STATUS_VALUES.PENDING_DISTRICT;
-      updates.building_comments = comments;
-      updates.building_approval_date = new Date();
-      break;
-    case 3:
-      updates.status = STATUS_VALUES.APPROVED;
-      updates.district_comments = comments;
-      updates.district_approval_date = new Date();
-      if (docURL) {
-        updates.approval_doc_url = docURL;
-      }
-      break;
-    default:
-      updates.status = STATUS_VALUES.REJECTED;
-      if (comments) {
-        updates.district_comments = comments;
-      }
-  }
-
-  return updateSubmission(submissionNumber, updates);
 }
 
 /**

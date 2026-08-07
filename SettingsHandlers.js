@@ -15,6 +15,12 @@ var BUILDING_SETTINGS_KEYS = {
   ECC: ['ECC_ADMIN', 'ECC_EMAIL']
 };
 
+// Per-building notification mode ('instant' or 'digest') - unlike the settings above,
+// this is super-admin-only regardless of building scope (see saveSettings), since it's
+// a district-wide policy choice about email volume, not a building's own contact info.
+var NOTIFY_MODE_SUFFIX = '_NOTIFY_MODE';
+var NOTIFY_MODES = ['instant', 'digest'];
+
 /**
  * Finds which building a _Settings key belongs to, if any
  * @param {string} key - Settings key, e.g. 'HS_EMAIL'
@@ -73,7 +79,8 @@ function getSettingsForDashboard() {
     buildingCodes.forEach(function (code) {
       buildings[code] = {
         admin: settings[code + '_ADMIN'] || '',
-        email: settings[code + '_EMAIL'] || ''
+        email: settings[code + '_EMAIL'] || '',
+        notifyMode: settings[code + NOTIFY_MODE_SUFFIX] || 'instant'
       };
     });
 
@@ -105,6 +112,22 @@ function saveSettings(updatesJson) {
 
     for (var key in updates) {
       var permitted = false;
+
+      if (key.slice(-NOTIFY_MODE_SUFFIX.length) === NOTIFY_MODE_SUFFIX) {
+        var modeBuilding = key.slice(0, -NOTIFY_MODE_SUFFIX.length);
+        var modeValue = String(updates[key] || '').toLowerCase();
+        permitted = ctx.isSuper && FORM_SCHEMA.building.options.indexOf(modeBuilding) !== -1 &&
+          NOTIFY_MODES.indexOf(modeValue) !== -1;
+
+        if (!permitted) {
+          skipped.push(key);
+          continue;
+        }
+
+        setSettingValue(sheet, key, modeValue);
+        saved.push(key);
+        continue;
+      }
 
       if (GLOBAL_SETTINGS_KEYS.indexOf(key) !== -1) {
         permitted = canSeeAll;
