@@ -22,7 +22,7 @@ function doPreMerge(subNumber, adultInCharge, folderID, spreadsheetID, templateI
 
   // Use the active spreadsheet (the one this script is bound to) instead of opening by ID
   // This ensures we always read from the correct spreadsheet
-  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var spreadsheet = getAppSpreadsheet();
 
   // Get data from Submissions sheet
   var submissionsSheet = spreadsheet.getSheetByName('Submissions');

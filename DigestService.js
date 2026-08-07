@@ -12,7 +12,7 @@
  */
 function sendDailyDigests() {
   var settings = getSettings();
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
+  var sheet = getAppSpreadsheet().getSheetByName('Submissions');
   var columnMapping = getColumnMapping(sheet);
   var data = sheet.getDataRange().getValues();
 

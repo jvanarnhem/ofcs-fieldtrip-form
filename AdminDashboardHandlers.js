@@ -35,7 +35,7 @@ function getPendingForMe() {
       return JSON.stringify({ success: false, message: 'Not authorized.' });
     }
 
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
+    var sheet = getAppSpreadsheet().getSheetByName('Submissions');
     var columnMapping = getColumnMapping(sheet);
     var data = sheet.getDataRange().getValues();
 
@@ -93,7 +93,7 @@ function getHistory(filterJson) {
     var yearFilter = filter.year || 'All';
     var scope = filter.scope === 'archive' ? 'archive' : 'current';
 
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(scope === 'archive' ? 'Archives' : 'Submissions');
+    var sheet = getAppSpreadsheet().getSheetByName(scope === 'archive' ? 'Archives' : 'Submissions');
 
     var results = [];
     var yearsSeen = {};

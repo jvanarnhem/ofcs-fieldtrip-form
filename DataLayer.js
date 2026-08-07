@@ -154,7 +154,7 @@ function appendSubmission(formData) {
     // Wait up to 30 seconds for the lock
     lock.waitLock(30000);
 
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
+    var sheet = getAppSpreadsheet().getSheetByName('Submissions');
 
     // Ensure all columns exist
     ensureColumnsExist(sheet);
@@ -237,7 +237,7 @@ function appendSubmission(formData) {
  * @returns {Object|null} Object containing row data and row index, or null if not found
  */
 function findSubmission(submissionNumber) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
+  var sheet = getAppSpreadsheet().getSheetByName('Submissions');
 
   if (!sheet) {
     Logger.log('Sheet not found: Submissions');
@@ -282,7 +282,7 @@ function updateSubmission(submissionNumber, updates) {
     return false;
   }
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
+  var sheet = getAppSpreadsheet().getSheetByName('Submissions');
   var columnMapping = getColumnMapping(sheet);
 
   // Update each field
@@ -334,7 +334,7 @@ function isArchivedTripDate(tripDate) {
  * @returns {Array} Array of submission objects
  */
 function getSubmissionsByBuilding(building, status) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
+  var sheet = getAppSpreadsheet().getSheetByName('Submissions');
   var columnMapping = getColumnMapping(sheet);
   var data = sheet.getDataRange().getValues();
 

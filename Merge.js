@@ -22,7 +22,7 @@ function doMerge(subNumber, adultInCharge, folderID, spreadsheetID, templateID) 
 
   // Use the active spreadsheet (the one this script is bound to) instead of opening by ID
   // This ensures we always read from the correct spreadsheet
-  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var spreadsheet = getAppSpreadsheet();
 
   var submissionsSheet = spreadsheet.getSheetByName('Submissions');
 

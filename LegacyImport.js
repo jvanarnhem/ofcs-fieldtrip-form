@@ -216,7 +216,7 @@ function mapLegacyRow(get) {
 function writeImportedRows(sheetName, dataObjs) {
   if (!dataObjs.length) return 0;
 
-  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var spreadsheet = getAppSpreadsheet();
   var sheet = spreadsheet.getSheetByName(sheetName);
   if (!sheet) {
     // Write the header row explicitly on creation - ensureColumnsExist's "append
@@ -260,7 +260,7 @@ function writeImportedRows(sheetName, dataObjs) {
 function migrateToArchiveModel(dryRun) {
   if (dryRun === undefined) dryRun = true;
 
-  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var spreadsheet = getAppSpreadsheet();
   var submissionsSheet = spreadsheet.getSheetByName('Submissions');
   var completedSheet = spreadsheet.getSheetByName('Completed');
 

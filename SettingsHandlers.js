@@ -105,7 +105,7 @@ function saveSettings(updatesJson) {
 
     var updates = JSON.parse(updatesJson);
     var canSeeAll = ctx.isSuper || ctx.isDistrict;
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SETTINGS_SHEET);
+    var sheet = getAppSpreadsheet().getSheetByName(SETTINGS_SHEET);
 
     var saved = [];
     var skipped = [];

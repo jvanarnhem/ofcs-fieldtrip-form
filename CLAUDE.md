@@ -76,7 +76,7 @@ This repo went through an in-place rewrite. The original pre-rewrite files (`Cod
 
 | Active file | Role |
 |---|---|
-| `CodeNew.js` | `doGet` router — main form / building admin / district admin dispatch, each gated by `getAdminContext()` for the review-link routes. Also holds `getSettings()`, `JSONCacheService()`. (The old unauthenticated `?action=reject` quick-reject route and the legacy `update()` shim were removed — both were dead, unauthenticated code paths.) |
+| `CodeNew.js` | `doGet` router — main form / building admin / district admin dispatch, each gated by `getAdminContext()` for the review-link routes. Also holds `getSettings()`, `JSONCacheService()`, and `getAppSpreadsheet()` — every sheet access in the codebase goes through this instead of calling `SpreadsheetApp.getActiveSpreadsheet()` directly, so a project can be pointed at a different spreadsheet via its own Script Properties (`APP_SPREADSHEET_ID`) without losing its container binding or web app URL — see "Flipping the switch to production". (The old unauthenticated `?action=reject` quick-reject route and the legacy `update()` shim were removed — both were dead, unauthenticated code paths.) |
 | `Config.js` | `FORM_SCHEMA` — single source of truth for form fields, column headers, validation flags. Add/rename a field here first. |
 | `DataLayer.js` | Sheet I/O: column-header-based mapping (`getColumnMapping`), `appendSubmission`, `findSubmission`, `updateSubmission` (all operate on the single `Submissions` sheet - see Data model), plus `normalizeTripDateString`/`isArchivedTripDate` (the Current-vs-Archives cutover check shared with `LegacyImport.js`). Uses `LockService` on append to avoid concurrent-submission collisions. |
 | `ValidationUtils.js` | `sanitizeInput`/`sanitizeFormData` (XSS-safe), `validateFormData` against `FORM_SCHEMA`, cross-field time-sequence checks. |
@@ -124,7 +124,32 @@ When asked to "update the form" or "fix the admin page," edit the `*New.html` / 
 - Git branches: `dev` (day-to-day work) → `master` (production).
 - **Always run `./switch-env.sh` with no args to check the current target before `clasp push`.** Pushing to prod is a live-app change affecting real district staff — confirm with the user before pushing to prod or merging `dev` → `master`.
 - `clasp push` only pushes files not excluded by `.claspignore` (see table above).
-- **As of this writing, none of the Submissions/Completed → Submissions/Archives data-model rewrite has been deployed to prod.** Prod is still running the old code, so prod's spreadsheet still has the old split: `Submissions` (pending/rejected only) and a separate `Completed` sheet (approved trips) that the new code never reads or writes. **Before deploying this rewrite to prod, `migrateToArchiveModel()` must be run against the *prod* spreadsheet first** (same one-time, dry-run-by-default tool used in dev, from `LegacyImport.js`) — otherwise every already-approved trip sitting in prod's `Completed` sheet becomes invisible to the new code (missing from History, from `getMySubmissions`, from `adminEditSubmission`/`adminPrintSubmission`/`doMerge` lookups) the moment the new code goes live. Also verify prod's `_Admins` roster is complete before deploying — the emailed buildingReview/districtReview links now require the visitor to be a real authorized admin there, not just signed into the domain, so a stale/incomplete roster would lock out an admin who used to be able to click straight through.
+- **Important: `.clasp.prod.json`'s Apps Script project is not an idle, never-used copy of this rewrite — it's the exact project currently serving the real, live legacy field trip app.** Confirmed by matching deployment IDs: the legacy spreadsheet's own data recorded `https://script.google.com/a/macros/ofcs.net/s/AKfycbwvAfRXYmGgD4ehXch9HgF1MQ0ROx8vLkMKLbaTa4lBRUsJsb-f/exec` as its current URL, and that exact deployment ID is one of two deployments sitting on `.clasp.prod.json`'s project (`@45 - Fixed Small Bus`). **Do not `clasp push` while pointed at prod casually** — it would overwrite the live legacy app's running code immediately, for real users, with no warning. See "Flipping the switch to production" below for the actual, deliberate plan for this project.
+
+## Flipping the switch to production
+
+The goal (confirmed with the user): keep the exact same bookmarked URL staff already use, never touch the legacy spreadsheet (kept forever as the historical record), and be able to keep developing on `dev` freely until a deliberate go-live moment.
+
+**The mechanism:** Apps Script container-bound projects can never be rebound to a different spreadsheet — so prod's project, permanently bound to the legacy spreadsheet, can't simply start operating on a fresh one just by pushing new code. Instead, every function that used to call `SpreadsheetApp.getActiveSpreadsheet()` now calls **`getAppSpreadsheet()`** (`CodeNew.js`), which checks that *project's own* Script Properties for a key called `APP_SPREADSHEET_ID`. If set, it opens that spreadsheet by ID instead of the bound one; if not set (true for `dev` today, and for prod until the flip), it falls back to `getActiveSpreadsheet()` — so this change is a no-op until someone deliberately sets that property on a given project.
+
+**Prerequisites, prepared ahead of time with zero risk to real users** (none of this touches the live URL or the legacy spreadsheet):
+1. Create prod's real spreadsheet — easiest is duplicating the dev spreadsheet (File → Make a copy), which already has the right `_Settings`/`_Admins`/column structure, then clearing out dev/test rows from `Submissions`/`Archives` (keep the header row).
+2. Review and correct every value in that copy's `_Settings` sheet for production use, not dev/test values: per-building admin emails, `DESTINATION_FOLDER_ID`/`TEMPLATE_ID` (approval doc merge), `INITIAL_SUB_FOLDER_ID`/`TEMPLATE_INIT_ID` (initial submission doc), `CALENDAR_NAME`, `DISTRICT_EMAIL`, `FINAL_EMAIL`, and any `<CODE>_NOTIFY_MODE` choices.
+3. Review/replace the `_Admins` roster with the real building/district/super admin accounts.
+4. Backfill real historical data into it: run `migrateToArchiveModel()` then `importLegacyTrips()` (both dry-run first — see `LegacyImport.js`) targeting this new spreadsheet.
+5. Note the new spreadsheet's ID (from its URL).
+
+**Wiring prod up, still with zero risk** (prod is still serving the old legacy code the whole time, which has no idea this property exists):
+6. Open prod's project directly: `https://script.google.com/d/1ok4fldEd4wiQNMoLYPurBwk6SrOkUQ7a4CVJd3jgT1y9IX74k0JqBxrH/edit`
+7. Project Settings (gear icon) → Script Properties → add `APP_SPREADSHEET_ID` = the new spreadsheet's ID from step 5.
+8. `./switch-env.sh prod` (confirm the target!) then `clasp push` — this updates prod's source code and its `@HEAD` test deployment, but **not** the live bookmarked deployment (`AKfycbwvAfRXYmGgD4ehXch9HgF1MQ0ROx8vLkMKLbaTa4lBRUsJsb-f`) yet, same distinction learned when redeploying dev mid-session.
+9. Test thoroughly against the `@HEAD`/test deployment URL (not the bookmarked one) — submit a trip, run it through building/district approval, check History/Archives/Settings, confirm doc merge and email all work against the new spreadsheet. Real users on the bookmarked URL are still hitting the untouched legacy app this whole time.
+
+**The actual flip (the one live, no-going-back step):**
+10. `clasp create-version "description"` then `clasp redeploy -V <that version number> AKfycbwvAfRXYmGgD4ehXch9HgF1MQ0ROx8vLkMKLbaTa4lBRUsJsb-f` — the instant this runs, the bookmarked URL starts serving the new app against the new spreadsheet. No URL change for anyone.
+11. If using digest-mode notifications, run `createDailyDigestTrigger()` once from *this* project's editor (triggers are per-project, dev's doesn't carry over).
+
+**Rollback, if something's wrong post-flip:** `clasp redeploy -V 45 AKfycbwvAfRXYmGgD4ehXch9HgF1MQ0ROx8vLkMKLbaTa4lBRUsJsb-f` instantly points the same bookmarked URL back at the old legacy code/version — safe and clean, since neither the legacy code nor the legacy spreadsheet were ever modified by any of the above.
 
 ## Conventions
 

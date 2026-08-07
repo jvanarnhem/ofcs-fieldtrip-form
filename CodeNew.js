@@ -3,14 +3,27 @@
  * Routes requests and serves appropriate interfaces
  */
 
-var SPREADSHEET_ID = '1vTtLDsUbBeYQVAVlX1658JOjRIigzbFlaY-U0MYViNc';
 var CACHE_PROP = CacheService.getPublicCache();
-var ss = SpreadsheetApp.getActiveSpreadsheet();
+var ss = getAppSpreadsheet();
 var SETTINGS_SHEET = "_Settings";
 var CACHE_SETTINGS = true;
 var SETTINGS_CACHE_TTL = 900;
 var cache = JSONCacheService();
 var SETTINGS = getSettings();
+
+/**
+ * Returns the spreadsheet this app reads/writes. Normally the project's own
+ * container-bound spreadsheet (how dev works today) - but if this project's
+ * Script Properties has APP_SPREADSHEET_ID set, that spreadsheet is used
+ * instead. This lets a project keep its existing container binding (and web
+ * app URL) while actually operating on a different spreadsheet - see
+ * CLAUDE.md's "Flipping the switch to production" section.
+ * @returns {Spreadsheet}
+ */
+function getAppSpreadsheet() {
+  var overrideId = PropertiesService.getScriptProperties().getProperty('APP_SPREADSHEET_ID');
+  return overrideId ? SpreadsheetApp.openById(overrideId) : SpreadsheetApp.getActiveSpreadsheet();
+}
 
 /**
  * Pulls in a shared HTML partial (e.g. vendored CSS) at template-render time.

@@ -15,7 +15,7 @@ var ADMIN_ROLES = {
  * @returns {Sheet} The _Admins sheet
  */
 function getAdminsSheet() {
-  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var spreadsheet = getAppSpreadsheet();
   var sheet = spreadsheet.getSheetByName(ADMINS_SHEET);
 
   if (!sheet) {

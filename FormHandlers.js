@@ -340,7 +340,7 @@ function getMySubmissions(email) {
     }
 
     var results = [];
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Submissions');
+    var sheet = getAppSpreadsheet().getSheetByName('Submissions');
 
     if (sheet) {
       var columnMapping = getColumnMapping(sheet);
