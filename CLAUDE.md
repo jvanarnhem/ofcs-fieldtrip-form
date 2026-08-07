@@ -76,11 +76,11 @@ This repo went through an in-place rewrite. The original pre-rewrite files (`Cod
 
 | Active file | Role |
 |---|---|
-| `CodeNew.js` | `doGet` router — main form / building admin / district admin / legacy quick-reject dispatch. Also holds `getSettings()`, `JSONCacheService()`, the legacy `update()` shim. |
+| `CodeNew.js` | `doGet` router — main form / building admin / district admin dispatch, each gated by `getAdminContext()` for the review-link routes. Also holds `getSettings()`, `JSONCacheService()`. (The old unauthenticated `?action=reject` quick-reject route and the legacy `update()` shim were removed — both were dead, unauthenticated code paths.) |
 | `Config.js` | `FORM_SCHEMA` — single source of truth for form fields, column headers, validation flags. Add/rename a field here first. |
 | `DataLayer.js` | Sheet I/O: column-header-based mapping (`getColumnMapping`), `appendSubmission`, `findSubmission`, `updateSubmission` (all operate on the single `Submissions` sheet - see Data model), plus `normalizeTripDateString`/`isArchivedTripDate` (the Current-vs-Archives cutover check shared with `LegacyImport.js`). Uses `LockService` on append to avoid concurrent-submission collisions. |
 | `ValidationUtils.js` | `sanitizeInput`/`sanitizeFormData` (XSS-safe), `validateFormData` against `FORM_SCHEMA`, cross-field time-sequence checks. |
-| `FormHandlers.js` | Entry points called from the HTML via `google.script.run`: `submitFieldTripForm`, `approveBuildingAdmin`, `approveDistrictAdmin`, `getSubmissionData`. |
+| `FormHandlers.js` | Entry points called from the HTML via `google.script.run`: `submitFieldTripForm`, `approveBuildingAdmin`, `approveDistrictAdmin` (both lock the check-then-act status transition via `LockService` to prevent double-processing), `getMySubmissions` (teacher-facing email lookup, `Submissions` only — doesn't search `Archives`). |
 | `EmailService.js` | All HTML email bodies (submission, approval, rejection notifications). |
 | `Merge.js` / `PreMerge.js` | Google Doc template merge — `doMerge` (final approved doc) / `doPreMerge` (initial submission receipt). Placeholder syntax: `[Column_Header]` in the template doc, matched against sheet header row. |
 | `CalendarAdd.js` | `addToCalendar` — adds the trip to a named Calendar. |
@@ -124,6 +124,7 @@ When asked to "update the form" or "fix the admin page," edit the `*New.html` / 
 - Git branches: `dev` (day-to-day work) → `master` (production).
 - **Always run `./switch-env.sh` with no args to check the current target before `clasp push`.** Pushing to prod is a live-app change affecting real district staff — confirm with the user before pushing to prod or merging `dev` → `master`.
 - `clasp push` only pushes files not excluded by `.claspignore` (see table above).
+- **As of this writing, none of the Submissions/Completed → Submissions/Archives data-model rewrite has been deployed to prod.** Prod is still running the old code, so prod's spreadsheet still has the old split: `Submissions` (pending/rejected only) and a separate `Completed` sheet (approved trips) that the new code never reads or writes. **Before deploying this rewrite to prod, `migrateToArchiveModel()` must be run against the *prod* spreadsheet first** (same one-time, dry-run-by-default tool used in dev, from `LegacyImport.js`) — otherwise every already-approved trip sitting in prod's `Completed` sheet becomes invisible to the new code (missing from History, from `getMySubmissions`, from `adminEditSubmission`/`adminPrintSubmission`/`doMerge` lookups) the moment the new code goes live. Also verify prod's `_Admins` roster is complete before deploying — the emailed buildingReview/districtReview links now require the visitor to be a real authorized admin there, not just signed into the domain, so a stale/incomplete roster would lock out an admin who used to be able to click straight through.
 
 ## Conventions
 
