@@ -4,6 +4,7 @@
  */
 
 var ADMINS_SHEET = '_Admins';
+var ADMINS_CACHE_TTL = 900;
 var ADMIN_ROLES = {
   BUILDING: 'building',
   DISTRICT: 'district',
@@ -27,6 +28,38 @@ function getAdminsSheet() {
 }
 
 /**
+ * Gets the _Admins roster, cached the same way getSettings() caches _Settings
+ * (see CodeNew.js) - getDashboardContext() runs this on every single dashboard
+ * RPC, so reading the sheet fresh every time was a real, repeated cost.
+ * Cache is invalidated by addAdminRow/setAdminRowActive (SettingsHandlers.js)
+ * whenever the roster is written.
+ * @returns {Object[]} [{ email (lowercased), role, building, name, active }, ...]
+ */
+function getAdminsRoster() {
+  var roster = cache.get('_admins_roster');
+
+  if (roster == undefined) {
+    var data = getAdminsSheet().getDataRange().getValues();
+    roster = [];
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      roster.push({
+        email: String(row[0] || '').trim().toLowerCase(),
+        role: String(row[1] || '').trim().toLowerCase(),
+        building: String(row[2] || '').trim(),
+        name: String(row[3] || ''),
+        active: row[4] === true || String(row[4]).trim().toUpperCase() === 'TRUE'
+      });
+    }
+
+    cache.put('_admins_roster', roster, ADMINS_CACHE_TTL);
+  }
+
+  return roster;
+}
+
+/**
  * Looks up every admin role granted to an email address
  * @param {string} email - Google account email of the visitor
  * @returns {Object} { isAdmin, isSuper, isDistrict, buildings, name }
@@ -45,30 +78,24 @@ function getAdminContext(email) {
     return context;
   }
 
-  var sheet = getAdminsSheet();
-  var data = sheet.getDataRange().getValues();
+  var roster = getAdminsRoster();
 
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    var rowEmail = String(row[0] || '').trim().toLowerCase();
-    var rowActive = row[4] === true || String(row[4]).trim().toUpperCase() === 'TRUE';
+  for (var i = 0; i < roster.length; i++) {
+    var row = roster[i];
 
-    if (rowEmail !== normalizedEmail || !rowActive) {
+    if (row.email !== normalizedEmail || !row.active) {
       continue;
     }
 
-    var role = String(row[1] || '').trim().toLowerCase();
-    var building = String(row[2] || '').trim();
-
     context.isAdmin = true;
-    context.name = context.name || String(row[3] || '');
+    context.name = context.name || row.name;
 
-    if (role === ADMIN_ROLES.SUPER) {
+    if (row.role === ADMIN_ROLES.SUPER) {
       context.isSuper = true;
-    } else if (role === ADMIN_ROLES.DISTRICT) {
+    } else if (row.role === ADMIN_ROLES.DISTRICT) {
       context.isDistrict = true;
-    } else if (role === ADMIN_ROLES.BUILDING && building && context.buildings.indexOf(building) === -1) {
-      context.buildings.push(building);
+    } else if (row.role === ADMIN_ROLES.BUILDING && row.building && context.buildings.indexOf(row.building) === -1) {
+      context.buildings.push(row.building);
     }
   }
 

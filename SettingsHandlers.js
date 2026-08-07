@@ -275,10 +275,12 @@ function addAdminRow(payloadJson) {
 
       sheet.getRange(existingRow, 4).setValue(name);
       sheet.getRange(existingRow, 5).setValue(true);
+      cache.remove('_admins_roster');
       return { success: true };
     }
 
     sheet.appendRow([email, role, building, name, true]);
+    cache.remove('_admins_roster');
     return { success: true };
   } catch (error) {
     Logger.log('addAdminRow error: ' + error);
@@ -313,6 +315,7 @@ function setAdminRowActive(payloadJson) {
     }
 
     sheet.getRange(rowIndex, 5).setValue(active);
+    cache.remove('_admins_roster');
     return { success: true };
   } catch (error) {
     Logger.log('setAdminRowActive error: ' + error);

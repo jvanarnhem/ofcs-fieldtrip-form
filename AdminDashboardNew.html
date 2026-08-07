@@ -56,6 +56,12 @@
             font-weight: 600;
         }
 
+        .history-section-heading {
+            color: #0d47a1;
+            border-bottom: 2px solid #0d47a1;
+            padding-bottom: 4px;
+        }
+
         .dashboard-body {
             padding: 40px;
         }
@@ -167,7 +173,6 @@
                 </div>
 
                 <div id="resultsArea"><p class="text-muted">Loading...</p></div>
-                <div class="d-flex justify-content-center align-items-center gap-2 mt-3" id="historyPagination"></div>
 
                 <div id="settingsArea" style="display:none;">
                     <div id="settingsAlert"></div>
@@ -396,7 +401,8 @@
         var historyScope = 'current'; // 'current' (Submissions) or 'archive' (Archives, year-pickable)
         var historyYear = String(new Date().getFullYear());
         var historyYears = [];
-        var historyPage = 1;
+        var historyFuturePage = 1;
+        var historyPastPage = 1;
         var HISTORY_PAGE_SIZE = 25;
         var settingsLoaded = false;
         var rosterAdmins = [];
@@ -527,7 +533,8 @@
                 buildingQuickFilter = value;
                 document.querySelectorAll('.quick-filter-btn').forEach(function (b) { b.classList.remove('active'); });
                 btn.classList.add('active');
-                historyPage = 1;
+                historyFuturePage = 1;
+                historyPastPage = 1;
                 render();
             });
             return btn;
@@ -578,7 +585,8 @@
                     historyStatusFilter = status;
                     wrap.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
                     btn.classList.add('active');
-                    historyPage = 1;
+                    historyFuturePage = 1;
+                    historyPastPage = 1;
                     render();
                 });
                 wrap.appendChild(btn);
@@ -607,7 +615,8 @@
 
         document.getElementById('historyYearSelect').addEventListener('change', function (e) {
             historyYear = e.target.value;
-            historyPage = 1;
+            historyFuturePage = 1;
+            historyPastPage = 1;
             historyLoaded = false;
             loadHistory();
         });
@@ -618,7 +627,8 @@
                 document.querySelectorAll('#historyScopeToggle button').forEach(function (b) { b.classList.remove('active'); });
                 btn.classList.add('active');
                 document.getElementById('historyYearSelect').style.display = historyScope === 'archive' ? '' : 'none';
-                historyPage = 1;
+                historyFuturePage = 1;
+                historyPastPage = 1;
                 historyLoaded = false;
                 loadHistory();
             });
@@ -626,7 +636,8 @@
 
         document.getElementById('searchInput').addEventListener('input', function (e) {
             searchText = e.target.value.trim().toLowerCase();
-            historyPage = 1;
+            historyFuturePage = 1;
+            historyPastPage = 1;
             render();
         });
 
@@ -702,62 +713,128 @@
             });
         }
 
+        // "YYYY-MM-DD" prefix from either a plain date string or a serialized
+        // Date's ISO string, so future/past bucketing works regardless of which
+        // shape trip_date came back as (see DataLayer.js's normalizeTripDateString)
+        function tripDateKey(tripDate) {
+            var match = String(tripDate || '').match(/^(\d{4}-\d{2}-\d{2})/);
+            return match ? match[1] : '';
+        }
+
+        function todayKey() {
+            var d = new Date();
+            var mm = ('0' + (d.getMonth() + 1)).slice(-2);
+            var dd = ('0' + d.getDate()).slice(-2);
+            return d.getFullYear() + '-' + mm + '-' + dd;
+        }
+
         function render() {
             var filtered = applyFilters(currentDataset());
-            var displayRows = filtered;
 
             document.getElementById('countLabel').textContent =
                 filtered.length + (filtered.length === 1 ? ' application' : ' applications');
 
             if (currentTab === 'history') {
-                var totalPages = Math.max(1, Math.ceil(filtered.length / HISTORY_PAGE_SIZE));
-                if (historyPage > totalPages) historyPage = totalPages;
-                var start = (historyPage - 1) * HISTORY_PAGE_SIZE;
-                displayRows = filtered.slice(start, start + HISTORY_PAGE_SIZE);
+                renderHistorySections(filtered);
+            } else {
+                renderTable(filtered);
             }
 
-            renderTable(displayRows);
             renderBulkBar(filtered);
-            renderHistoryPagination(filtered.length);
         }
 
-        function renderHistoryPagination(totalCount) {
-            var wrap = document.getElementById('historyPagination');
+        // History gets split into two independently-paginated sections: Future
+        // Trips (today's trip_date and later, soonest first) and Past Trips
+        // (most recent first) - rather than one combined, single-paginated list
+        function renderHistorySections(filtered) {
+            var today = todayKey();
+            var future = [];
+            var past = [];
 
-            if (currentTab !== 'history' || totalCount === 0) {
-                wrap.innerHTML = '';
+            filtered.forEach(function (s) {
+                if (tripDateKey(s.trip_date) >= today) { future.push(s); } else { past.push(s); }
+            });
+
+            future.sort(function (a, b) { return tripDateKey(a.trip_date) < tripDateKey(b.trip_date) ? -1 : 1; });
+            past.sort(function (a, b) { return tripDateKey(a.trip_date) > tripDateKey(b.trip_date) ? -1 : 1; });
+
+            var area = document.getElementById('resultsArea');
+            area.innerHTML = '';
+
+            if (!future.length && !past.length) {
+                var none = document.createElement('p');
+                none.className = 'text-muted';
+                none.textContent = 'No applications match the current filters.';
+                area.appendChild(none);
                 return;
             }
 
-            var totalPages = Math.max(1, Math.ceil(totalCount / HISTORY_PAGE_SIZE));
+            if (future.length) {
+                area.appendChild(renderHistorySection('Future Trips', future, historyFuturePage, function (p) {
+                    historyFuturePage = p;
+                    render();
+                }));
+            }
 
-            wrap.innerHTML = '';
-
-            var prevBtn = document.createElement('button');
-            prevBtn.type = 'button';
-            prevBtn.className = 'btn btn-outline-secondary btn-sm';
-            prevBtn.textContent = 'Previous';
-            prevBtn.disabled = historyPage <= 1;
-            prevBtn.addEventListener('click', function () { historyPage--; render(); });
-
-            var label = document.createElement('span');
-            label.className = 'text-muted small';
-            label.textContent = 'Page ' + historyPage + ' of ' + totalPages;
-
-            var nextBtn = document.createElement('button');
-            nextBtn.type = 'button';
-            nextBtn.className = 'btn btn-outline-secondary btn-sm';
-            nextBtn.textContent = 'Next';
-            nextBtn.disabled = historyPage >= totalPages;
-            nextBtn.addEventListener('click', function () { historyPage++; render(); });
-
-            wrap.appendChild(prevBtn);
-            wrap.appendChild(label);
-            wrap.appendChild(nextBtn);
+            if (past.length) {
+                area.appendChild(renderHistorySection('Past Trips', past, historyPastPage, function (p) {
+                    historyPastPage = p;
+                    render();
+                }));
+            }
         }
 
-        function renderTable(rows) {
-            var area = document.getElementById('resultsArea');
+        function renderHistorySection(title, rows, page, onPageChange) {
+            var totalPages = Math.max(1, Math.ceil(rows.length / HISTORY_PAGE_SIZE));
+            if (page > totalPages) page = totalPages;
+            var start = (page - 1) * HISTORY_PAGE_SIZE;
+            var pageRows = rows.slice(start, start + HISTORY_PAGE_SIZE);
+
+            var section = document.createElement('div');
+            section.className = 'mb-4';
+
+            var heading = document.createElement('h6');
+            heading.className = 'history-section-heading text-uppercase small fw-bold mb-2';
+            heading.textContent = title + ' (' + rows.length + ')';
+            section.appendChild(heading);
+
+            var tableContainer = document.createElement('div');
+            section.appendChild(tableContainer);
+            renderTable(pageRows, tableContainer);
+
+            if (rows.length > HISTORY_PAGE_SIZE) {
+                var pagination = document.createElement('div');
+                pagination.className = 'd-flex justify-content-center align-items-center gap-2 mt-2';
+
+                var prevBtn = document.createElement('button');
+                prevBtn.type = 'button';
+                prevBtn.className = 'btn btn-outline-secondary btn-sm';
+                prevBtn.textContent = 'Previous';
+                prevBtn.disabled = page <= 1;
+                prevBtn.addEventListener('click', function () { onPageChange(page - 1); });
+
+                var label = document.createElement('span');
+                label.className = 'text-muted small';
+                label.textContent = 'Page ' + page + ' of ' + totalPages;
+
+                var nextBtn = document.createElement('button');
+                nextBtn.type = 'button';
+                nextBtn.className = 'btn btn-outline-secondary btn-sm';
+                nextBtn.textContent = 'Next';
+                nextBtn.disabled = page >= totalPages;
+                nextBtn.addEventListener('click', function () { onPageChange(page + 1); });
+
+                pagination.appendChild(prevBtn);
+                pagination.appendChild(label);
+                pagination.appendChild(nextBtn);
+                section.appendChild(pagination);
+            }
+
+            return section;
+        }
+
+        function renderTable(rows, container) {
+            var area = container || document.getElementById('resultsArea');
             area.innerHTML = '';
 
             if (rows.length === 0) {
