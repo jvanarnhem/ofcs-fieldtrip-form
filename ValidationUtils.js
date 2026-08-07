@@ -151,6 +151,19 @@ function timeToMinutes(timeStr) {
 }
 
 /**
+ * Normalizes an address for loose (case/whitespace/punctuation-insensitive) comparison
+ * @param {string} address
+ * @returns {string}
+ */
+function normalizeAddressForComparison(address) {
+  return String(address || '')
+    .toLowerCase()
+    .replace(/[.,#]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Validates form data against schema
  * @param {Object} formData - The form data to validate
  * @param {Object} options - Optional flags. { allowPastTripDate: true } skips the futureDate check
@@ -254,6 +267,28 @@ function validateFormData(formData, options) {
 
     if (formData[prevKey] && formData[curKey] && !isValidTimeSequence(formData[prevKey], formData[curKey])) {
       addError(curKey, FORM_SCHEMA[curKey].label + ' must be after ' + FORM_SCHEMA[prevKey].label.toLowerCase());
+    }
+  }
+
+  // Catches a common mistake: entering the departure school's own address as the
+  // destination. Only checked once that school's address has actually been
+  // configured in _Settings (<CODE>_ADDRESS, via the dashboard's Settings tab) -
+  // silently skipped otherwise, since there's nothing to compare against.
+  if (formData.depart_from && formData.destination_address) {
+    var departBuildingCode = null;
+    for (var buildingCode in FORM_SCHEMA.building.optionLabels) {
+      if (FORM_SCHEMA.building.optionLabels[buildingCode] === formData.depart_from) {
+        departBuildingCode = buildingCode;
+        break;
+      }
+    }
+
+    if (departBuildingCode) {
+      var schoolAddress = getSettings()[departBuildingCode + '_ADDRESS'];
+
+      if (schoolAddress && normalizeAddressForComparison(schoolAddress) === normalizeAddressForComparison(formData.destination_address)) {
+        addError('destination_address', 'This matches ' + formData.depart_from + '\'s own address - did you mean to enter the destination\'s address instead?');
+      }
     }
   }
 

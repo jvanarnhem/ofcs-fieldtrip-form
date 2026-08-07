@@ -175,6 +175,14 @@ var FORM_SCHEMA = {
     section: 'Transportation Needs',
     col: 4
   },
+  need_box_truck: {
+    type: 'checkbox',
+    columnHeader: 'Box_Truck',
+    label: 'Box Truck',
+    helpText: 'Only 1 available - check if this trip needs it for equipment/supplies',
+    section: 'Transportation Needs',
+    col: 4
+  },
 
   // Schedule
   leave_school: {

@@ -117,6 +117,19 @@ function doGet(e) {
       // Pre-fills the Email field client-side (typo prevention) - not enforced,
       // a teacher can still change it to submit under a different address
       template.userEmail = Session.getActiveUser().getEmail();
+
+      // Keyed by depart_from's value (a school name, e.g. "High School") rather
+      // than building code, so the client can look it up directly with no
+      // further mapping - lets real-time validation catch the same
+      // destination-matches-departure-school mistake FormHandlers.js/
+      // ValidationUtils.js enforces server-side, without a second round trip
+      var settingsForForm = getSettings();
+      var departAddresses = {};
+      for (var buildingCode in FORM_SCHEMA.building.optionLabels) {
+        var buildingLabel = FORM_SCHEMA.building.optionLabels[buildingCode];
+        departAddresses[buildingLabel] = settingsForForm[buildingCode + '_ADDRESS'] || '';
+      }
+      template.departAddresses = departAddresses;
     }
 
     // Served pages are hosted on a sandboxed content domain, not the /exec URL,

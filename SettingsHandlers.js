@@ -8,11 +8,11 @@ var GLOBAL_SETTINGS_KEYS = ['DESTINATION_FOLDER_ID', 'INITIAL_SUB_FOLDER_ID', 'T
   'TEMPLATE_INIT_ID', 'CALENDAR_NAME', 'FINAL_EMAIL', 'DISTRICT_EMAIL'];
 
 var BUILDING_SETTINGS_KEYS = {
-  HS: ['HS_ADMIN', 'HS_EMAIL'],
-  MS: ['MS_ADMIN', 'MS_EMAIL'],
-  IS: ['IS_ADMIN', 'IS_EMAIL'],
-  FL: ['FL_ADMIN', 'FL_EMAIL'],
-  ECC: ['ECC_ADMIN', 'ECC_EMAIL']
+  HS: ['HS_ADMIN', 'HS_EMAIL', 'HS_ADDRESS'],
+  MS: ['MS_ADMIN', 'MS_EMAIL', 'MS_ADDRESS'],
+  IS: ['IS_ADMIN', 'IS_EMAIL', 'IS_ADDRESS'],
+  FL: ['FL_ADMIN', 'FL_EMAIL', 'FL_ADDRESS'],
+  ECC: ['ECC_ADMIN', 'ECC_EMAIL', 'ECC_ADDRESS']
 };
 
 // Per-building notification mode ('instant' or 'digest') - unlike the settings above,
@@ -80,6 +80,7 @@ function getSettingsForDashboard() {
       buildings[code] = {
         admin: settings[code + '_ADMIN'] || '',
         email: settings[code + '_EMAIL'] || '',
+        address: settings[code + '_ADDRESS'] || '',
         notifyMode: settings[code + NOTIFY_MODE_SUFFIX] || 'instant'
       };
     });

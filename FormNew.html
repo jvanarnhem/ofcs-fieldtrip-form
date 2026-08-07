@@ -321,6 +321,16 @@
             const formFields = <?!= JSON.stringify(formFields) ?>;
             const timeSequence = <?!= JSON.stringify(timeSequence) ?>;
             const userEmail = <?!= JSON.stringify(userEmail) ?>;
+            const departAddresses = <?!= JSON.stringify(departAddresses) ?>;
+
+            // Mirrors normalizeAddressForComparison in ValidationUtils.js
+            function normalizeAddress(address) {
+                return String(address || '')
+                    .toLowerCase()
+                    .replace(/[.,#]/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
 
             const SECTION_ORDER = [
                 'Trip Information',
@@ -418,6 +428,12 @@
                     }).join('');
                     controlHtml = `<div>${radios}</div>`;
 
+                } else if (field.type === 'checkbox') {
+                    controlHtml = `<div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="${key}" name="${key}" value="Yes">
+                        <label class="form-check-label" for="${key}">${field.label}</label>
+                    </div>`;
+
                 } else {
                     const attrs = [`type="${field.type}"`, `id="${key}"`, `name="${key}"`];
                     if (required) attrs.push('required');
@@ -443,9 +459,13 @@
                     helpHtml = `<div class="help-text">Maximum ${field.maxLength} characters. <span class="char-counter">0/${field.maxLength}</span></div>`;
                 }
 
-                const labelHtml = field.type === 'radio'
-                    ? `<label class="form-label">${field.label}${reqMark}</label>`
-                    : `<label for="${key}" class="form-label">${field.label}${reqMark}</label>`;
+                // Checkbox already carries its own label inline (form-check-label above);
+                // radio's label has no `for` since it applies to the whole group, not one input
+                const labelHtml = field.type === 'checkbox'
+                    ? ''
+                    : field.type === 'radio'
+                        ? `<label class="form-label">${field.label}${reqMark}</label>`
+                        : `<label for="${key}" class="form-label">${field.label}${reqMark}</label>`;
 
                 return `<div class="col-md-${field.col || 12} mb-3" data-field="${key}">
                     ${labelHtml}
@@ -546,6 +566,19 @@
                 }
             });
 
+            // Re-check destination_address when depart_from changes, so the
+            // address-matches-departure-school mistake is caught regardless of
+            // which field the user filled in second
+            const departFromField = form.querySelector('[name="depart_from"]');
+            const destinationAddressField = form.querySelector('[name="destination_address"]');
+            if (departFromField && destinationAddressField) {
+                departFromField.addEventListener('change', function() {
+                    if (destinationAddressField.value.trim()) {
+                        validateField(destinationAddressField);
+                    }
+                });
+            }
+
             function validateField(field) {
                 const key = field.name;
                 const schema = formFields[key];
@@ -563,6 +596,11 @@
                 function markValid() {
                     field.classList.remove('is-invalid');
                     field.classList.add('is-valid');
+                }
+
+                if (schema.type === 'checkbox') {
+                    // Optional and boolean - checked or not, there's nothing to validate
+                    return true;
                 }
 
                 if (schema.type === 'radio') {
@@ -640,6 +678,18 @@
                             if (prevValue && value <= prevValue) {
                                 isValid = false;
                                 errorMessage = schema.label + ' must be after ' + formFields[prevKey].label.toLowerCase();
+                            }
+                        }
+                        break;
+
+                    case 'text':
+                        if (key === 'destination_address') {
+                            const departField = form.querySelector('[name="depart_from"]');
+                            const departValue = departField ? departField.value : '';
+                            const departAddress = departAddresses[departValue];
+                            if (departAddress && normalizeAddress(value) === normalizeAddress(departAddress)) {
+                                isValid = false;
+                                errorMessage = 'This matches ' + departValue + '\'s own address - did you mean the destination\'s address?';
                             }
                         }
                         break;
@@ -732,6 +782,8 @@
                         if (anyField.type === 'radio') {
                             const radio = form.querySelector('[name="' + key + '"][value="' + data[key] + '"]');
                             if (radio) radio.checked = true;
+                        } else if (anyField.type === 'checkbox') {
+                            anyField.checked = true;
                         } else {
                             anyField.value = data[key];
                             if (anyField.tagName === 'SELECT') {
