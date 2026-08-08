@@ -287,7 +287,7 @@ function adminCreateSubmission(formDataJson) {
 
     if (initialStatus === STATUS_VALUES.PENDING_DISTRICT) {
       if (notify) {
-        sendDistrictAdminNotification(submissionNumber, sanitized, '', settings.DISTRICT_EMAIL);
+        sendDistrictAdminNotification(submissionNumber, sanitized, '', settings.DISTRICT_EMAIL, settings.DISTRICT_ADMIN);
       }
       return { success: true, submissionNumber: submissionNumber };
     }

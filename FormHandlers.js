@@ -180,8 +180,11 @@ function approveBuildingAdmin(approvalDataJson) {
       };
 
     } else if (action === 'approve') {
-      // Send notification to district admin
-      sendDistrictAdminNotification(submissionNumber, submission.dataObject, comments, settings.DISTRICT_EMAIL);
+      // Send notification to district admin, unless the district is set to a daily
+      // digest instead of an email per submission (see DigestService.js's sendDailyDigests)
+      if ((settings.DISTRICT_NOTIFY_MODE || 'instant') !== 'digest') {
+        sendDistrictAdminNotification(submissionNumber, submission.dataObject, comments, settings.DISTRICT_EMAIL, settings.DISTRICT_ADMIN);
+      }
 
       return {
         success: true,

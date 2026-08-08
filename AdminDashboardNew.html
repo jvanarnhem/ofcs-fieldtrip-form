@@ -147,7 +147,10 @@
                             <button type="button" class="nav-link" data-tab="settings">Settings</button>
                         </li>
                     </ul>
-                    <button type="button" class="btn btn-submit" id="createTripBtn" style="display:none;">+ Create Trip</button>
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary" id="refreshBtn">Refresh</button>
+                        <button type="button" class="btn btn-submit" id="createTripBtn" style="display:none;">+ Create Trip</button>
+                    </div>
                 </div>
 
                 <div class="btn-group mb-3" id="historyScopeToggle" role="group" style="display:none;">
@@ -388,6 +391,7 @@
 
             <div class="text-end">
                 <button type="button" class="btn btn-outline-secondary" id="tripModalCancel">Cancel</button>
+                <button type="button" class="btn btn-outline-primary" id="tripModalEdit" style="display:none;">Edit</button>
                 <button type="button" class="btn btn-submit" id="tripModalSave">Save</button>
             </div>
         </div>
@@ -422,6 +426,7 @@
             TEMPLATE_INIT_ID: 'Initial Submission Doc Template ID',
             CALENDAR_NAME: 'Calendar Name',
             FINAL_EMAIL: 'Final Notification Email',
+            DISTRICT_ADMIN: 'District Admin Name',
             DISTRICT_EMAIL: 'District Admin Email'
         };
 
@@ -557,6 +562,7 @@
 
                 var isSettings = currentTab === 'settings';
 
+                document.getElementById('refreshBtn').style.display = isSettings ? 'none' : '';
                 document.getElementById('historyStatusTabs').style.display = (currentTab === 'history') ? '' : 'none';
                 document.getElementById('historyScopeToggle').style.display = (currentTab === 'history') ? '' : 'none';
                 document.getElementById('historyYearSelect').style.display = (currentTab === 'history' && historyScope === 'archive') ? '' : 'none';
@@ -646,6 +652,14 @@
             historyFuturePage = 1;
             historyPastPage = 1;
             render();
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', function () {
+            if (currentTab === 'history') {
+                loadHistory();
+            } else {
+                loadPending();
+            }
         });
 
         // ---------- Data loading ----------
@@ -905,6 +919,10 @@
                 actionTd.className = 'text-end';
                 actionTd.style.whiteSpace = 'nowrap';
 
+                actionTd.appendChild(makeActionButton('View', 'btn-outline-secondary', function () {
+                    openViewModal(s);
+                }));
+
                 if (currentTab === 'pending' && canActOnRow(s)) {
                     actionTd.appendChild(makeActionButton('Approve', 'btn-outline-success', function () {
                         processSingle(s.submission_number, 'approve', '');
@@ -917,9 +935,6 @@
                 }
 
                 if (showAdminActions) {
-                    actionTd.appendChild(makeActionButton('Edit', 'btn-outline-secondary', function () {
-                        openEditModal(s);
-                    }));
                     actionTd.appendChild(makeActionButton('Print', 'btn-outline-primary', function () {
                         printSubmission(s.submission_number);
                     }));
@@ -929,6 +944,13 @@
                 }
 
                 tr.appendChild(actionTd);
+
+                tr.style.cursor = 'pointer';
+                tr.addEventListener('click', function (e) {
+                    if (e.target.closest('input, button, a')) return;
+                    openViewModal(s);
+                });
+
                 tbody.appendChild(tr);
             });
 
@@ -1090,6 +1112,12 @@
             openCreateModal();
         });
 
+        function setTripFormReadOnly(readOnly) {
+            document.querySelectorAll('#tripForm input, #tripForm select, #tripForm textarea').forEach(function (el) {
+                el.disabled = readOnly;
+            });
+        }
+
         function openCreateModal() {
             editingSubmissionNumber = null;
             document.getElementById('tripModalTitle').textContent = 'Create Trip';
@@ -1098,12 +1126,19 @@
             document.getElementById('tripForm').reset();
             document.getElementById('initialStatus').value = 'Pending Building Approval';
             document.getElementById('notifyCheck').checked = false;
+            setTripFormReadOnly(false);
+            document.getElementById('tripModalCancel').textContent = 'Cancel';
+            document.getElementById('tripModalEdit').style.display = 'none';
+            document.getElementById('tripModalSave').style.display = '';
             document.getElementById('tripModalOverlay').style.display = 'flex';
         }
 
-        function openEditModal(submission) {
+        // Opens a submission in read-only mode - administrators should rarely be
+        // changing an already-submitted application, so editing is an explicit,
+        // separate step (the Edit button below) rather than the default.
+        function openViewModal(submission) {
             editingSubmissionNumber = submission.submission_number;
-            document.getElementById('tripModalTitle').textContent = 'Edit Trip #' + submission.submission_number;
+            document.getElementById('tripModalTitle').textContent = 'Trip #' + submission.submission_number;
             document.getElementById('statusRow').style.display = 'none';
             document.getElementById('tripModalAlert').innerHTML = '';
             document.getElementById('tripForm').reset();
@@ -1134,8 +1169,21 @@
             if (submission.extra_stop_restroom === 'No') document.getElementById('f_extra_stop_restroom_no').checked = true;
             document.getElementById('f_need_box_truck').checked = submission.need_box_truck === 'Yes';
 
+            setTripFormReadOnly(true);
+            document.getElementById('tripModalCancel').textContent = 'Close';
+            document.getElementById('tripModalSave').style.display = 'none';
+            document.getElementById('tripModalEdit').style.display = ctx.isSuper ? '' : 'none';
+
             document.getElementById('tripModalOverlay').style.display = 'flex';
         }
+
+        document.getElementById('tripModalEdit').addEventListener('click', function () {
+            setTripFormReadOnly(false);
+            document.getElementById('tripModalTitle').textContent = 'Edit Trip #' + editingSubmissionNumber;
+            document.getElementById('tripModalCancel').textContent = 'Cancel';
+            document.getElementById('tripModalEdit').style.display = 'none';
+            document.getElementById('tripModalSave').style.display = '';
+        });
 
         document.getElementById('tripModalCancel').addEventListener('click', function () {
             document.getElementById('tripModalOverlay').style.display = 'none';
@@ -1303,6 +1351,18 @@
                 Object.keys(GLOBAL_SETTINGS_LABELS).forEach(function (key) {
                     globalFields.appendChild(makeSettingField('g_' + key, GLOBAL_SETTINGS_LABELS[key], response.global[key] || ''));
                 });
+
+                var districtNotifyCol = document.createElement('div');
+                districtNotifyCol.className = 'col-md-6 mb-3';
+                if (ctx.isSuper) {
+                    districtNotifyCol.appendChild(makeNotifyModeField('g_DISTRICT_NOTIFY_MODE', response.global.DISTRICT_NOTIFY_MODE || 'instant'));
+                } else {
+                    var districtModeLabel = document.createElement('div');
+                    districtModeLabel.className = 'small text-muted mt-4';
+                    districtModeLabel.textContent = 'District Notifications: ' + (response.global.DISTRICT_NOTIFY_MODE === 'digest' ? 'Daily digest' : 'Instant (each trip)');
+                    districtNotifyCol.appendChild(districtModeLabel);
+                }
+                globalFields.appendChild(districtNotifyCol);
             } else {
                 globalSection.style.display = 'none';
             }
@@ -1343,7 +1403,7 @@
         function collectSettingsFormData() {
             var updates = {};
 
-            document.querySelectorAll('#globalSettingsFields input').forEach(function (input) {
+            document.querySelectorAll('#globalSettingsFields input, #globalSettingsFields select').forEach(function (input) {
                 updates[input.id.replace(/^g_/, '')] = input.value;
             });
 

@@ -5,7 +5,11 @@
  */
 
 var GLOBAL_SETTINGS_KEYS = ['DESTINATION_FOLDER_ID', 'INITIAL_SUB_FOLDER_ID', 'TEMPLATE_ID',
-  'TEMPLATE_INIT_ID', 'CALENDAR_NAME', 'FINAL_EMAIL', 'DISTRICT_EMAIL'];
+  'TEMPLATE_INIT_ID', 'CALENDAR_NAME', 'FINAL_EMAIL', 'DISTRICT_ADMIN', 'DISTRICT_EMAIL'];
+
+// District's notify mode isn't building-scoped, but is otherwise governed by the same
+// super-admin-only rule as a building's _NOTIFY_MODE - see the NOTIFY_MODE_SUFFIX branch below.
+var DISTRICT_NOTIFY_SCOPE = 'DISTRICT';
 
 var BUILDING_SETTINGS_KEYS = {
   HS: ['HS_ADMIN', 'HS_EMAIL', 'HS_ADDRESS'],
@@ -72,6 +76,7 @@ function getSettingsForDashboard() {
       GLOBAL_SETTINGS_KEYS.forEach(function (key) {
         global[key] = settings[key] || '';
       });
+      global.DISTRICT_NOTIFY_MODE = settings.DISTRICT_NOTIFY_MODE || 'instant';
     }
 
     var buildingCodes = canSeeAll ? FORM_SCHEMA.building.options : ctx.buildings;
@@ -117,8 +122,9 @@ function saveSettings(updatesJson) {
       if (key.slice(-NOTIFY_MODE_SUFFIX.length) === NOTIFY_MODE_SUFFIX) {
         var modeBuilding = key.slice(0, -NOTIFY_MODE_SUFFIX.length);
         var modeValue = String(updates[key] || '').toLowerCase();
-        permitted = ctx.isSuper && FORM_SCHEMA.building.options.indexOf(modeBuilding) !== -1 &&
-          NOTIFY_MODES.indexOf(modeValue) !== -1;
+        var isValidNotifyScope = FORM_SCHEMA.building.options.indexOf(modeBuilding) !== -1 ||
+          modeBuilding === DISTRICT_NOTIFY_SCOPE;
+        permitted = ctx.isSuper && isValidNotifyScope && NOTIFY_MODES.indexOf(modeValue) !== -1;
 
         if (!permitted) {
           skipped.push(key);

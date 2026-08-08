@@ -163,6 +163,15 @@ function normalizeAddressForComparison(address) {
     .trim();
 }
 
+// Pulls out just the street number + first word of the street name (e.g.
+// "123 main" from "123 Main St, Springfield, OH 44017") so that suite/unit
+// numbers, city, state, zip, and "St" vs "Street" don't prevent a match.
+// Returns null if the address doesn't start with a number (can't extract a key).
+function extractStreetKey(address) {
+  var match = normalizeAddressForComparison(address).match(/^(\d+)\s+([a-z0-9]+)/);
+  return match ? (match[1] + ' ' + match[2]) : null;
+}
+
 /**
  * Validates form data against schema
  * @param {Object} formData - The form data to validate
@@ -286,8 +295,17 @@ function validateFormData(formData, options) {
     if (departBuildingCode) {
       var schoolAddress = getSettings()[departBuildingCode + '_ADDRESS'];
 
-      if (schoolAddress && normalizeAddressForComparison(schoolAddress) === normalizeAddressForComparison(formData.destination_address)) {
-        addError('destination_address', 'This matches ' + formData.depart_from + '\'s own address - did you mean to enter the destination\'s address instead?');
+      if (schoolAddress) {
+        var schoolStreetKey = extractStreetKey(schoolAddress);
+        var destStreetKey = extractStreetKey(formData.destination_address);
+
+        var isSameAddress = schoolStreetKey && destStreetKey
+          ? schoolStreetKey === destStreetKey
+          : normalizeAddressForComparison(schoolAddress) === normalizeAddressForComparison(formData.destination_address);
+
+        if (isSameAddress) {
+          addError('destination_address', 'This matches ' + formData.depart_from + '\'s own address - did you mean to enter the destination\'s address instead?');
+        }
       }
     }
   }

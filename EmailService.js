@@ -43,6 +43,9 @@ function formatEmailDate(dateValue) {
  * @param {string} adminName - Building admin name
  */
 function sendBuildingAdminNotification(submissionNumber, formData, adminEmail, adminName) {
+  // Direct single-submission review link - retired in favor of routing everyone through
+  // the dashboard below, but kept computed/unused so it's a one-line revert if we want
+  // the direct link back (see the commented-out button further down).
   var approvalUrl = ScriptApp.getService().getUrl() +
     '?idNum=' + submissionNumber + '&action=buildingReview';
   var dashboardUrl = ScriptApp.getService().getUrl() + '?dashboard=1';
@@ -68,8 +71,9 @@ function sendBuildingAdminNotification(submissionNumber, formData, adminEmail, a
   htmlBody += '</div>';
 
   htmlBody += '<div style="text-align: center; margin: 30px 0;">';
-  htmlBody += '<a href="' + approvalUrl + '" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Review Application</a>';
-  htmlBody += '<p style="margin-top: 15px;"><a href="' + dashboardUrl + '" style="color: #667eea;">Or view all pending trips in the dashboard</a></p>';
+  // htmlBody += '<a href="' + approvalUrl + '" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Review Application</a>';
+  // htmlBody += '<p style="margin-top: 15px;"><a href="' + dashboardUrl + '" style="color: #667eea;">Or view all pending trips in the dashboard</a></p>';
+  htmlBody += '<a href="' + dashboardUrl + '" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Review in Dashboard</a>';
   htmlBody += '</div>';
 
   htmlBody += '<p style="color: #6c757d; font-size: 14px;">Please review this application at your earliest convenience. Click the button above to view full details and provide your approval decision.</p>';
@@ -164,8 +168,12 @@ function sendSubmitterConfirmation(submissionNumber, formData, submissionDoc) {
  * @param {Object} formData - The submission data
  * @param {string} buildingComments - Comments from building admin
  * @param {string} districtEmail - District admin email
+ * @param {string} districtAdminName - District admin name
  */
-function sendDistrictAdminNotification(submissionNumber, formData, buildingComments, districtEmail) {
+function sendDistrictAdminNotification(submissionNumber, formData, buildingComments, districtEmail, districtAdminName) {
+  // Direct single-submission review link - retired in favor of routing everyone through
+  // the dashboard below, but kept computed/unused so it's a one-line revert if we want
+  // the direct link back (see the commented-out button further down).
   var approvalUrl = ScriptApp.getService().getUrl() +
     '?idNum=' + submissionNumber + '&action=districtReview';
   var dashboardUrl = ScriptApp.getService().getUrl() + '?dashboard=1';
@@ -176,6 +184,7 @@ function sendDistrictAdminNotification(submissionNumber, formData, buildingComme
   htmlBody += '</div>';
 
   htmlBody += '<div style="padding: 20px; background: #f8f9fa;">';
+  htmlBody += '<p>Dear ' + (districtAdminName || 'Admin') + ',</p>';
   htmlBody += '<p>A field trip application has been approved by the building administrator and requires district-level review.</p>';
 
   htmlBody += '<div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">';
@@ -198,8 +207,9 @@ function sendDistrictAdminNotification(submissionNumber, formData, buildingComme
   }
 
   htmlBody += '<div style="text-align: center; margin: 30px 0;">';
-  htmlBody += '<a href="' + approvalUrl + '" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Review Application</a>';
-  htmlBody += '<p style="margin-top: 15px;"><a href="' + dashboardUrl + '" style="color: #667eea;">Or view all pending trips in the dashboard</a></p>';
+  // htmlBody += '<a href="' + approvalUrl + '" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Review Application</a>';
+  // htmlBody += '<p style="margin-top: 15px;"><a href="' + dashboardUrl + '" style="color: #667eea;">Or view all pending trips in the dashboard</a></p>';
+  htmlBody += '<a href="' + dashboardUrl + '" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Review in Dashboard</a>';
   htmlBody += '</div>';
 
   htmlBody += '</div>';
