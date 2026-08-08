@@ -218,7 +218,10 @@
     <!-- Create / Edit trip modal -->
     <div class="modal-overlay" id="tripModalOverlay" style="display:none;">
         <div class="modal-box modal-box-lg">
-            <h5 id="tripModalTitle">Create Trip</h5>
+            <div class="d-flex justify-content-between align-items-start">
+                <h5 id="tripModalTitle" class="mb-0">Create Trip</h5>
+                <button type="button" class="btn-close" id="tripModalX" aria-label="Close"></button>
+            </div>
             <div id="tripModalAlert"></div>
 
             <form id="tripForm" novalidate>
@@ -1212,6 +1215,10 @@
         });
 
         document.getElementById('tripModalCancel').addEventListener('click', function () {
+            document.getElementById('tripModalOverlay').style.display = 'none';
+        });
+
+        document.getElementById('tripModalX').addEventListener('click', function () {
             document.getElementById('tripModalOverlay').style.display = 'none';
         });
 
