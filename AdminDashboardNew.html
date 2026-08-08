@@ -391,6 +391,8 @@
 
             <div class="text-end">
                 <button type="button" class="btn btn-outline-secondary" id="tripModalCancel">Cancel</button>
+                <button type="button" class="btn btn-outline-success" id="tripModalApprove" style="display:none;">Approve</button>
+                <button type="button" class="btn btn-outline-danger" id="tripModalReject" style="display:none;">Reject</button>
                 <button type="button" class="btn btn-outline-primary" id="tripModalEdit" style="display:none;">Edit</button>
                 <button type="button" class="btn btn-submit" id="tripModalSave">Save</button>
             </div>
@@ -1128,6 +1130,8 @@
             document.getElementById('notifyCheck').checked = false;
             setTripFormReadOnly(false);
             document.getElementById('tripModalCancel').textContent = 'Cancel';
+            document.getElementById('tripModalApprove').style.display = 'none';
+            document.getElementById('tripModalReject').style.display = 'none';
             document.getElementById('tripModalEdit').style.display = 'none';
             document.getElementById('tripModalSave').style.display = '';
             document.getElementById('tripModalOverlay').style.display = 'flex';
@@ -1174,6 +1178,12 @@
             document.getElementById('tripModalSave').style.display = 'none';
             document.getElementById('tripModalEdit').style.display = ctx.isSuper ? '' : 'none';
 
+            // Same actionability rule as the row's own Approve/Reject buttons, so the
+            // modal never offers a decision the dashboard itself wouldn't.
+            var canActFromModal = currentTab === 'pending' && canActOnRow(submission);
+            document.getElementById('tripModalApprove').style.display = canActFromModal ? '' : 'none';
+            document.getElementById('tripModalReject').style.display = canActFromModal ? '' : 'none';
+
             document.getElementById('tripModalOverlay').style.display = 'flex';
         }
 
@@ -1181,8 +1191,24 @@
             setTripFormReadOnly(false);
             document.getElementById('tripModalTitle').textContent = 'Edit Trip #' + editingSubmissionNumber;
             document.getElementById('tripModalCancel').textContent = 'Cancel';
+            document.getElementById('tripModalApprove').style.display = 'none';
+            document.getElementById('tripModalReject').style.display = 'none';
             document.getElementById('tripModalEdit').style.display = 'none';
             document.getElementById('tripModalSave').style.display = '';
+        });
+
+        document.getElementById('tripModalApprove').addEventListener('click', function () {
+            var submissionNumber = editingSubmissionNumber;
+            document.getElementById('tripModalOverlay').style.display = 'none';
+            processSingle(submissionNumber, 'approve', '');
+        });
+
+        document.getElementById('tripModalReject').addEventListener('click', function () {
+            var submissionNumber = editingSubmissionNumber;
+            document.getElementById('tripModalOverlay').style.display = 'none';
+            openCommentModal(function (comment) {
+                processSingle(submissionNumber, 'reject', comment);
+            });
         });
 
         document.getElementById('tripModalCancel').addEventListener('click', function () {
