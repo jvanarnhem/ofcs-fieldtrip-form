@@ -1203,6 +1203,7 @@
         document.getElementById('tripModalApprove').addEventListener('click', function () {
             var submissionNumber = editingSubmissionNumber;
             document.getElementById('tripModalOverlay').style.display = 'none';
+            showAlert('Processing application #' + submissionNumber + '...', 'info');
             processSingle(submissionNumber, 'approve', '');
         });
 
@@ -1210,6 +1211,7 @@
             var submissionNumber = editingSubmissionNumber;
             document.getElementById('tripModalOverlay').style.display = 'none';
             openCommentModal(function (comment) {
+                showAlert('Processing application #' + submissionNumber + '...', 'info');
                 processSingle(submissionNumber, 'reject', comment);
             });
         });
