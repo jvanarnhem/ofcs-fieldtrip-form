@@ -242,8 +242,8 @@ var FORM_SCHEMA = {
     columnHeader: 'Purpose',
     required: true,
     maxLength: 1000,
-    label: 'Educational Purpose of Trip',
-    placeholder: 'Describe the educational purpose and learning objectives of this field trip',
+    label: 'Purpose of Trip',
+    placeholder: 'Describe the purpose of this field trip.',
     section: 'Educational Purpose',
     col: 12
   },
