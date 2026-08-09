@@ -60,7 +60,7 @@ var FORM_SCHEMA = {
       HS: 'High School',
       MS: 'Middle School',
       IS: 'Intermediate School',
-      FL: 'Florence Lawson Elementary',
+      FL: 'Falls-Lenox Elementary',
       ECC: 'Early Childhood Center'
     },
     section: 'Trip Information',
@@ -103,7 +103,7 @@ var FORM_SCHEMA = {
     columnHeader: 'Depart_From',
     required: true,
     label: 'Depart From',
-    options: ['High School', 'Middle School', 'Intermediate School', 'Florence Lawson Elementary', 'Early Childhood Center'],
+    options: ['High School', 'Middle School', 'Intermediate School', 'Falls-Lenox Elementary', 'Early Childhood Center'],
     section: 'Trip Logistics',
     col: 6
   },
@@ -160,7 +160,7 @@ var FORM_SCHEMA = {
     min: 0,
     defaultValue: 0,
     label: 'Number of Small Buses',
-    helpText: '15-20 passenger (wheelchair accessible with lift)',
+    helpText: '12-15 passenger (wheelchair accessible with lift)',
     section: 'Transportation Needs',
     col: 4
   },
