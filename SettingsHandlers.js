@@ -4,8 +4,13 @@
  * sheet (known keys only, no free-form additions) and the _Admins roster.
  */
 
-var GLOBAL_SETTINGS_KEYS = ['DESTINATION_FOLDER_ID', 'INITIAL_SUB_FOLDER_ID', 'TEMPLATE_ID',
-  'TEMPLATE_INIT_ID', 'CALENDAR_NAME', 'FINAL_EMAIL', 'DISTRICT_ADMIN', 'DISTRICT_EMAIL'];
+// TEMPLATE_ID/TEMPLATE_INIT_ID used to point at the Google Doc templates
+// PreMerge.js/Merge.js merged into - both now generate the document entirely
+// in code (see TripDocument.js), so those two settings are no longer read
+// anywhere; only the destination folders below still matter.
+var GLOBAL_SETTINGS_KEYS = ['DESTINATION_FOLDER_ID', 'INITIAL_SUB_FOLDER_ID',
+  'CALENDAR_NAME', 'FINAL_EMAIL', 'DISTRICT_ADMIN', 'DISTRICT_EMAIL',
+  'ERROR_NOTIFY_EMAIL'];
 
 // District's notify mode isn't building-scoped, but is otherwise governed by the same
 // super-admin-only rule as a building's _NOTIFY_MODE - see the NOTIFY_MODE_SUFFIX branch below.
@@ -93,6 +98,7 @@ function getSettingsForDashboard() {
     return { success: true, global: global, buildings: buildings };
   } catch (error) {
     Logger.log('getSettingsForDashboard error: ' + error);
+    notifySystemError('getSettingsForDashboard', error);
     return { success: false, message: 'An error occurred loading settings.' };
   }
 }
@@ -159,6 +165,7 @@ function saveSettings(updatesJson) {
     return { success: true, saved: saved, skipped: skipped };
   } catch (error) {
     Logger.log('saveSettings error: ' + error);
+    notifySystemError('saveSettings', error);
     return { success: false, message: 'An error occurred saving settings.' };
   }
 }
@@ -199,6 +206,7 @@ function getAdminsRosterForDashboard() {
     return { success: true, admins: admins, canManageAll: canManageAll };
   } catch (error) {
     Logger.log('getAdminsRosterForDashboard error: ' + error);
+    notifySystemError('getAdminsRosterForDashboard', error);
     return { success: false, message: 'An error occurred loading the admin roster.' };
   }
 }
@@ -247,14 +255,16 @@ function addAdminRow(payloadJson) {
     var canManageAll = ctx.isSuper || ctx.isDistrict;
 
     if (canManageAll) {
-      var validRoles = [ADMIN_ROLES.BUILDING, ADMIN_ROLES.DISTRICT, ADMIN_ROLES.SUPER];
+      var validRoles = [ADMIN_ROLES.BUILDING, ADMIN_ROLES.DISTRICT, ADMIN_ROLES.SUPER,
+        ADMIN_ROLES.LUNCH, ADMIN_ROLES.LUNCH_DISTRICT];
       if (validRoles.indexOf(role) === -1) {
         return { success: false, message: 'Invalid role.' };
       }
-      if (role === ADMIN_ROLES.BUILDING && FORM_SCHEMA.building.options.indexOf(building) === -1) {
+      var isBuildingScopedRole = (role === ADMIN_ROLES.BUILDING || role === ADMIN_ROLES.LUNCH);
+      if (isBuildingScopedRole && FORM_SCHEMA.building.options.indexOf(building) === -1) {
         return { success: false, message: 'Invalid building.' };
       }
-      if (role !== ADMIN_ROLES.BUILDING) {
+      if (!isBuildingScopedRole) {
         building = '';
       }
     } else {
@@ -291,6 +301,7 @@ function addAdminRow(payloadJson) {
     return { success: true };
   } catch (error) {
     Logger.log('addAdminRow error: ' + error);
+    notifySystemError('addAdminRow', error);
     return { success: false, message: 'An error occurred adding the admin.' };
   }
 }
@@ -326,6 +337,7 @@ function setAdminRowActive(payloadJson) {
     return { success: true };
   } catch (error) {
     Logger.log('setAdminRowActive error: ' + error);
+    notifySystemError('setAdminRowActive', error);
     return { success: false, message: 'An error occurred updating the admin.' };
   }
 }

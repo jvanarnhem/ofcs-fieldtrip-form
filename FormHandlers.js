@@ -28,6 +28,13 @@ function submitFieldTripForm(formDataJson) {
 
     var formData = processed.data;
 
+    // Real lunch counts aren't known yet at submission - just flag that this trip
+    // is awaiting them. The teacher fills them in later via the link in their
+    // confirmation email (see sendSubmitterConfirmation, EmailService.js).
+    if (formData.school_lunch === 'Yes') {
+      formData.lunch_status = LUNCH_STATUS_VALUES.AWAITING_COUNTS;
+    }
+
     // Generate Google Maps directions URL if we have both addresses
     if (formData.depart_from && formData.destination_address) {
       var origin = encodeURIComponent(formData.depart_from + ', Olmsted Falls, OH');
@@ -77,23 +84,22 @@ function submitFieldTripForm(formDataJson) {
 
     // Generate initial submission PDF BEFORE sending confirmation email
     var initialDoc = null;
-    if (settings.INITIAL_SUB_FOLDER_ID && settings.TEMPLATE_INIT_ID) {
+    if (settings.INITIAL_SUB_FOLDER_ID) {
       try {
-        initialDoc = doPreMerge(
-          submissionNumber,
-          formData.adult_in_charge,
-          settings.INITIAL_SUB_FOLDER_ID,
-          settings.SPREADSHEET_ID,
-          settings.TEMPLATE_INIT_ID
-        );
+        initialDoc = doPreMerge(submissionNumber, formData.adult_in_charge, settings.INITIAL_SUB_FOLDER_ID);
+        if (initialDoc) {
+          updateSubmission(submissionNumber, { approval_doc_url: initialDoc.getUrl() });
+        }
       } catch (pdfError) {
         Logger.log('PDF generation error: ' + pdfError);
-        // Don't fail the whole submission if PDF fails
+        // Don't fail the whole submission if PDF fails - but still flag it, since
+        // otherwise nobody would ever know this submission's receipt doc is missing
+        notifySystemError('submitFieldTripForm doPreMerge (#' + submissionNumber + ')', pdfError);
       }
     }
 
     // Send confirmation email to submitter with attached PDF
-    sendSubmitterConfirmation(submissionNumber, formData, initialDoc);
+    sendSubmitterConfirmation(submissionNumber, formData, initialDoc, settings);
 
     return {
       success: true,
@@ -103,6 +109,7 @@ function submitFieldTripForm(formDataJson) {
 
   } catch (error) {
     Logger.log('Form submission error: ' + error);
+    notifySystemError('submitFieldTripForm', error);
     return {
       success: false,
       message: 'An unexpected error occurred. Please try again or contact support.'
@@ -150,12 +157,19 @@ function approveBuildingAdmin(approvalDataJson) {
       }
 
       if (action === 'reject') {
-        updateSubmission(submissionNumber, {
+        var buildingRejectUpdates = {
           status: STATUS_VALUES.REJECTED,
           building_comments: comments,
           building_approval_date: new Date(),
           building_reviewed_by: Session.getActiveUser().getEmail()
-        });
+        };
+        // Trip is off - reflect that in lunch_status regardless of whether
+        // counts were ever entered (The Food Services Department only gets emailed below if they'd
+        // already been told, but the record itself should stop looking pending)
+        if (submission.dataObject.lunch_status && submission.dataObject.lunch_status !== LUNCH_STATUS_VALUES.CANCELLED) {
+          buildingRejectUpdates.lunch_status = LUNCH_STATUS_VALUES.CANCELLED;
+        }
+        updateSubmission(submissionNumber, buildingRejectUpdates);
       } else if (action === 'approve') {
         updateSubmission(submissionNumber, {
           status: STATUS_VALUES.PENDING_DISTRICT,
@@ -173,6 +187,13 @@ function approveBuildingAdmin(approvalDataJson) {
     if (action === 'reject') {
       // Send rejection email to submitter
       sendRejectionEmail(submission.dataObject, comments, 'Building Administrator');
+
+      // Only The Food Services Department who already got real counts needs to hear this was cancelled -
+      // if lunch was never requested, or counts were never entered, they were
+      // never told in the first place, so there's nothing to retract
+      if (submission.dataObject.lunch_status === LUNCH_STATUS_VALUES.COUNTS_PROVIDED) {
+        sendLunchCancelledNotification(submission.dataObject, settings);
+      }
 
       return {
         success: true,
@@ -194,6 +215,7 @@ function approveBuildingAdmin(approvalDataJson) {
 
   } catch (error) {
     Logger.log('Building admin approval error: ' + error);
+    notifySystemError('approveBuildingAdmin', error);
     return {
       success: false,
       message: 'An error occurred processing the approval'
@@ -241,12 +263,19 @@ function approveDistrictAdmin(approvalDataJson) {
       }
 
       if (action === 'reject') {
-        updateSubmission(submissionNumber, {
+        var districtRejectUpdates = {
           status: STATUS_VALUES.REJECTED,
           district_comments: comments,
           district_approval_date: new Date(),
           district_reviewed_by: Session.getActiveUser().getEmail()
-        });
+        };
+        // Trip is off - reflect that in lunch_status regardless of whether
+        // counts were ever entered (The Food Services Department only gets emailed below if they'd
+        // already been told, but the record itself should stop looking pending)
+        if (submission.dataObject.lunch_status && submission.dataObject.lunch_status !== LUNCH_STATUS_VALUES.CANCELLED) {
+          districtRejectUpdates.lunch_status = LUNCH_STATUS_VALUES.CANCELLED;
+        }
+        updateSubmission(submissionNumber, districtRejectUpdates);
       } else if (action === 'approve') {
         updateSubmission(submissionNumber, {
           status: STATUS_VALUES.APPROVED,
@@ -265,6 +294,13 @@ function approveDistrictAdmin(approvalDataJson) {
       // Send rejection email to submitter
       sendRejectionEmail(submission.dataObject, comments, 'District Administrator');
 
+      // Only The Food Services Department who already got real counts needs to hear this was cancelled -
+      // if lunch was never requested, or counts were never entered, they were
+      // never told in the first place, so there's nothing to retract
+      if (submission.dataObject.lunch_status === LUNCH_STATUS_VALUES.COUNTS_PROVIDED) {
+        sendLunchCancelledNotification(submission.dataObject, settings);
+      }
+
       return {
         success: true,
         message: 'Application rejected and submitter notified'
@@ -274,15 +310,9 @@ function approveDistrictAdmin(approvalDataJson) {
       // Generate final approval document (status is already Approved from the locked claim above)
       var approvalDoc = null;
       var approvalDocUrl = '';
-      if (settings.DESTINATION_FOLDER_ID && settings.TEMPLATE_ID) {
+      if (settings.DESTINATION_FOLDER_ID) {
         try {
-          approvalDoc = doMerge(
-            submissionNumber,
-            submission.dataObject.adult_in_charge,
-            settings.DESTINATION_FOLDER_ID,
-            settings.SPREADSHEET_ID,
-            settings.TEMPLATE_ID
-          );
+          approvalDoc = doMerge(submissionNumber, submission.dataObject.adult_in_charge, settings.DESTINATION_FOLDER_ID);
           if (approvalDoc) {
             approvalDocUrl = approvalDoc.getUrl();
             updateSubmission(submissionNumber, { approval_doc_url: approvalDocUrl });
@@ -290,6 +320,7 @@ function approveDistrictAdmin(approvalDataJson) {
         } catch (pdfError) {
           Logger.log('PDF generation error: ' + pdfError);
           Logger.log('Error stack: ' + pdfError.stack);
+          notifySystemError('approveDistrictAdmin doMerge (#' + submissionNumber + ')', pdfError);
         }
       }
 
@@ -308,6 +339,7 @@ function approveDistrictAdmin(approvalDataJson) {
         }
       } catch (calError) {
         Logger.log('Calendar add error: ' + calError);
+        notifySystemError('approveDistrictAdmin addToCalendar (#' + submissionNumber + ')', calError);
       }
 
       return {
@@ -318,6 +350,7 @@ function approveDistrictAdmin(approvalDataJson) {
 
   } catch (error) {
     Logger.log('District admin approval error: ' + error);
+    notifySystemError('approveDistrictAdmin', error);
     return {
       success: false,
       message: 'An error occurred processing the approval'
@@ -373,6 +406,7 @@ function getMySubmissions(email) {
 
   } catch (error) {
     Logger.log('getMySubmissions error: ' + error);
+    notifySystemError('getMySubmissions', error);
     return JSON.stringify({
       success: false,
       message: 'An error occurred looking up your applications.'

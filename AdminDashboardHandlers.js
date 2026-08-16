@@ -55,6 +55,7 @@ function getPendingForMe() {
     return JSON.stringify({ success: true, submissions: results });
   } catch (error) {
     Logger.log('getPendingForMe error: ' + error);
+    notifySystemError('getPendingForMe', error);
     return JSON.stringify({ success: false, message: 'An error occurred loading pending applications.' });
   }
 }
@@ -148,6 +149,7 @@ function getHistory(filterJson) {
     return JSON.stringify({ success: true, submissions: results, years: years });
   } catch (error) {
     Logger.log('getHistory error: ' + error);
+    notifySystemError('getHistory', error);
     return JSON.stringify({ success: false, message: 'An error occurred loading history.' });
   }
 }
@@ -229,6 +231,7 @@ function bulkProcessSubmissions(payloadJson) {
     return { success: true, results: results };
   } catch (error) {
     Logger.log('bulkProcessSubmissions error: ' + error);
+    notifySystemError('bulkProcessSubmissions', error);
     return { success: false, message: 'An error occurred processing the batch.' };
   }
 }
@@ -308,14 +311,15 @@ function adminCreateSubmission(formDataJson) {
       district_approval_date: now
     });
 
-    if (settings.DESTINATION_FOLDER_ID && settings.TEMPLATE_ID) {
+    if (settings.DESTINATION_FOLDER_ID) {
       try {
-        var approvalDoc = doMerge(submissionNumber, sanitized.adult_in_charge, settings.DESTINATION_FOLDER_ID, settings.SPREADSHEET_ID, settings.TEMPLATE_ID);
+        var approvalDoc = doMerge(submissionNumber, sanitized.adult_in_charge, settings.DESTINATION_FOLDER_ID);
         if (approvalDoc) {
           updateSubmission(submissionNumber, { approval_doc_url: approvalDoc.getUrl() });
         }
       } catch (pdfError) {
         Logger.log('adminCreateSubmission doMerge error: ' + pdfError);
+        notifySystemError('adminCreateSubmission doMerge (#' + submissionNumber + ')', pdfError);
       }
     }
 
@@ -326,6 +330,7 @@ function adminCreateSubmission(formDataJson) {
     return { success: true, submissionNumber: submissionNumber };
   } catch (error) {
     Logger.log('adminCreateSubmission error: ' + error);
+    notifySystemError('adminCreateSubmission', error);
     return { success: false, message: 'An unexpected error occurred creating the trip.' };
   }
 }
@@ -373,6 +378,7 @@ function adminEditSubmission(submissionNumber, updatesJson) {
     return { success: true };
   } catch (error) {
     Logger.log('adminEditSubmission error: ' + error);
+    notifySystemError('adminEditSubmission', error);
     return { success: false, message: 'An error occurred updating the trip.' };
   }
 }
@@ -396,19 +402,22 @@ function adminPrintSubmission(submissionNumber) {
     }
 
     var settings = getSettings();
-    if (!settings.DESTINATION_FOLDER_ID || !settings.TEMPLATE_ID) {
-      return { success: false, message: 'Document template is not configured in Settings.' };
+    if (!settings.DESTINATION_FOLDER_ID) {
+      return { success: false, message: 'Document destination folder is not configured in Settings.' };
     }
 
-    var doc = doMerge(submissionNumber, submission.dataObject.adult_in_charge, settings.DESTINATION_FOLDER_ID, settings.SPREADSHEET_ID, settings.TEMPLATE_ID);
+    var doc = doMerge(submissionNumber, submission.dataObject.adult_in_charge, settings.DESTINATION_FOLDER_ID);
 
     if (!doc) {
       return { success: false, message: 'Unable to generate the document.' };
     }
 
+    updateSubmission(submissionNumber, { approval_doc_url: doc.getUrl() });
+
     return { success: true, url: doc.getUrl() };
   } catch (error) {
     Logger.log('adminPrintSubmission error: ' + error);
+    notifySystemError('adminPrintSubmission', error);
     return { success: false, message: 'An error occurred generating the document.' };
   }
 }
@@ -438,6 +447,7 @@ function adminDeleteSubmission(submissionNumber) {
     return { success: true };
   } catch (error) {
     Logger.log('adminDeleteSubmission error: ' + error);
+    notifySystemError('adminDeleteSubmission', error);
     return { success: false, message: 'An error occurred deleting the trip.' };
   }
 }

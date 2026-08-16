@@ -92,6 +92,31 @@ function doGet(e) {
         }
       }
 
+    } else if (action === 'lunchEntry') {
+      // Teacher-facing, after-the-fact lunch-count entry - not part of REVIEW_ACTIONS
+      // above since this needs a plain "signed-in visitor is this submission's own
+      // teacher" identity check, not an admin-role check via getAdminContext.
+      var lunchSubmission = findSubmission(idVal);
+      template = HtmlService.createTemplateFromFile("LunchEntryNew.html");
+
+      if (!lunchSubmission) {
+        template.info = null;
+        template.lunchOptions = [];
+        template.lunchCostText = buildLunchCostReminderText(getSettings());
+      } else {
+        var lunchVisitorEmail = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase();
+        var submissionEmail = String(lunchSubmission.dataObject.email || '').trim().toLowerCase();
+
+        if (!lunchVisitorEmail || lunchVisitorEmail !== submissionEmail) {
+          template = HtmlService.createTemplateFromFile("NotAuthorized.html");
+        } else {
+          template.info = lunchSubmission.dataObject;
+          var lunchEntrySettings = getSettings();
+          template.lunchOptions = parseLunchOptions(lunchEntrySettings.LUNCH_OPTIONS);
+          template.lunchCostText = buildLunchCostReminderText(lunchEntrySettings);
+        }
+      }
+
     } else if (e.parameter.checkStatus == '1') {
       // Teacher self-service status lookup - always the signed-in visitor's own
       // email, never a free-typed one, so this can't be used to look up anyone else's
@@ -107,6 +132,19 @@ function doGet(e) {
       } else {
         template = HtmlService.createTemplateFromFile("AdminDashboardNew.html");
         template.ctx = dashboardCtx;
+      }
+
+    } else if (e.parameter.lunchDashboard == '1') {
+      // Food Services Department Staff's own dashboard - separate role/login from the trip-
+      // approval dashboard above (isLunch, not isAdmin)
+      var lunchDashboardCtx = getAdminContext(Session.getActiveUser().getEmail());
+
+      if (!lunchDashboardCtx.isLunch) {
+        template = HtmlService.createTemplateFromFile("NotAuthorized.html");
+      } else {
+        template = HtmlService.createTemplateFromFile("LunchDashboardNew.html");
+        template.ctx = lunchDashboardCtx;
+        template.lunchOptions = parseLunchOptions(getSettings().LUNCH_OPTIONS);
       }
 
     } else {
@@ -130,6 +168,7 @@ function doGet(e) {
         departAddresses[buildingLabel] = settingsForForm[buildingCode + '_ADDRESS'] || '';
       }
       template.departAddresses = departAddresses;
+      template.lunchCostText = buildLunchCostReminderText(settingsForForm);
     }
 
     // Served pages are hosted on a sandboxed content domain, not the /exec URL,
@@ -145,6 +184,7 @@ function doGet(e) {
   } catch (error) {
     Logger.log('doGet error: ' + error);
     Logger.log('Error stack: ' + error.stack);
+    notifySystemError('doGet (' + (e && e.parameter ? JSON.stringify(e.parameter) : 'no params') + ')', error);
     return ContentService.createTextOutput("An error occurred: " + error.message + ". Please check the execution logs.");
   }
 }

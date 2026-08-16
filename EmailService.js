@@ -36,6 +36,45 @@ function formatEmailDate(dateValue) {
 }
 
 /**
+ * Safety net so an unexpected failure anywhere in the app gets flagged to a
+ * person instead of silently returning { success: false } to just the one
+ * browser tab that happened to be open (or, for a trigger-run function like
+ * sendDailyDigests, to no one at all). Called from every RPC/trigger
+ * function's own top-level catch block - see each call site for what's
+ * actually being guarded. Recipient is _Settings' ERROR_NOTIFY_EMAIL
+ * (dashboard-configurable, Settings tab) with a hardcoded fallback so this
+ * still works even before that setting's ever been touched.
+ * Best-effort and deliberately swallows its own failures - a broken
+ * notification path must never mask, or throw on top of, the original error.
+ * @param {string} context - Name of the function where the error was caught
+ * @param {*} error - The caught error (may not always be a real Error object)
+ */
+function notifySystemError(context, error) {
+  try {
+    var settings = getSettings();
+    var recipient = settings.ERROR_NOTIFY_EMAIL || 'jvanarnhem@ofcs.net';
+
+    var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
+    htmlBody += '<h2 style="color: #dc3545;">Field Trip App Error</h2>';
+    htmlBody += '<p><strong>Function:</strong> ' + context + '</p>';
+    htmlBody += '<p><strong>Time:</strong> ' + new Date().toString() + '</p>';
+    htmlBody += '<p><strong>Error:</strong> ' + (error && error.message ? error.message : String(error)) + '</p>';
+    if (error && error.stack) {
+      htmlBody += '<p><strong>Stack:</strong></p><pre style="white-space: pre-wrap; background: #f8f9fa; padding: 10px;">' + error.stack + '</pre>';
+    }
+    htmlBody += '</div>';
+
+    MailApp.sendEmail({
+      to: recipient,
+      subject: 'Field Trip App Error: ' + context,
+      htmlBody: htmlBody
+    });
+  } catch (notifyError) {
+    Logger.log('notifySystemError itself failed to send: ' + notifyError);
+  }
+}
+
+/**
  * Sends notification to building administrator when form is submitted
  * @param {number} submissionNumber - Unique submission ID
  * @param {Object} formData - The submission data
@@ -92,6 +131,7 @@ function sendBuildingAdminNotification(submissionNumber, formData, adminEmail, a
     });
   } catch (error) {
     Logger.log('Error sending building admin notification: ' + error);
+    notifySystemError('sendBuildingAdminNotification (#' + submissionNumber + ')', error);
   }
 }
 
@@ -100,8 +140,9 @@ function sendBuildingAdminNotification(submissionNumber, formData, adminEmail, a
  * @param {number} submissionNumber - Unique submission ID
  * @param {Object} formData - The submission data
  * @param {Document} submissionDoc - Optional initial submission document to attach
+ * @param {Object} settings - _Settings map, used for the lunch cost reminder below
  */
-function sendSubmitterConfirmation(submissionNumber, formData, submissionDoc) {
+function sendSubmitterConfirmation(submissionNumber, formData, submissionDoc, settings) {
   var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
   htmlBody += '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center;">';
   htmlBody += '<h1 style="margin: 0;">✓ Application Received</h1>';
@@ -129,6 +170,19 @@ function sendSubmitterConfirmation(submissionNumber, formData, submissionDoc) {
   htmlBody += '<li>You will receive email updates at each stage</li>';
   htmlBody += '</ol>';
   htmlBody += '</div>';
+
+  // Real counts aren't known yet at submission time - point the teacher to the
+  // self-service entry page instead of asking for names right now
+  if (formData.school_lunch === 'Yes') {
+    var lunchEntryUrl = ScriptApp.getService().getUrl() + '?idNum=' + submissionNumber + '&action=lunchEntry';
+    htmlBody += '<div style="background: #d1ecf1; border-left: 4px solid #0dcaf0; padding: 15px; margin: 20px 0;">';
+    htmlBody += '<h3 style="margin-top: 0; color: #055160;">School Prepared Lunch</h3>';
+    htmlBody += '<p>You indicated this trip needs school-prepared lunch. When you know your final counts, submit them here:</p>';
+    htmlBody += '<p><a href="' + lunchEntryUrl + '" style="color: #055160; font-weight: bold;">Submit Lunch Counts</a></p>';
+    htmlBody += '<p>The Food Services Department needs at least a week\'s notice to guarantee orders can be processed. Trips with less than a week\'s notice should contact food service directly.</p>';
+    htmlBody += '<p style="margin-bottom: 0;">' + buildLunchCostReminderText(settings || {}) + '</p>';
+    htmlBody += '</div>';
+  }
 
   if (submissionDoc) {
     htmlBody += '<p><strong>Your submission document is attached.</strong> Please print and keep for your records.</p>';
@@ -159,6 +213,7 @@ function sendSubmitterConfirmation(submissionNumber, formData, submissionDoc) {
     MailApp.sendEmail(emailOptions);
   } catch (error) {
     Logger.log('Error sending submitter confirmation: ' + error);
+    notifySystemError('sendSubmitterConfirmation (#' + submissionNumber + ')', error);
   }
 }
 
@@ -227,6 +282,7 @@ function sendDistrictAdminNotification(submissionNumber, formData, buildingComme
     });
   } catch (error) {
     Logger.log('Error sending district admin notification: ' + error);
+    notifySystemError('sendDistrictAdminNotification (#' + submissionNumber + ')', error);
   }
 }
 
@@ -277,6 +333,7 @@ function sendRejectionEmail(formData, comments, rejectedBy) {
     });
   } catch (error) {
     Logger.log('Error sending rejection email: ' + error);
+    notifySystemError('sendRejectionEmail (#' + formData.submission_number + ')', error);
   }
 }
 
@@ -357,6 +414,7 @@ function sendFinalApprovalEmail(formData, comments, approvalDoc) {
     MailApp.sendEmail(emailOptions);
   } catch (error) {
     Logger.log('Error sending final approval email: ' + error);
+    notifySystemError('sendFinalApprovalEmail (#' + formData.submission_number + ')', error);
   }
 }
 
@@ -398,5 +456,176 @@ function sendBusGarageNotification(formData) {
     });
   } catch (error) {
     Logger.log('Error sending bus garage notification: ' + error);
+    notifySystemError('sendBusGarageNotification (#' + formData.submission_number + ')', error);
+  }
+}
+
+/**
+ * Parses lunch_names' "---"-separated blob back into { optionName: [names...] }.
+ * Mirrors FormNew.html's client-side parseLunchNames() - same delimiter format,
+ * chosen because it survives sanitizeInput()'s HTML-entity escaping untouched.
+ * @param {string} str
+ * @returns {Object}
+ */
+function parseLunchNamesString(str) {
+  var result = {};
+  if (!str) return result;
+
+  var current = null;
+  var lines = str.split('\n');
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (line === '---') {
+      current = null;
+    } else if (current === null) {
+      current = line;
+      result[current] = [];
+    } else if (line.trim()) {
+      result[current].push(line.trim());
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Builds the recipient list for a building's lunch-related emails: that
+ * building's lunch manager plus the district-wide central contact, deduped,
+ * skipping either if unconfigured.
+ * @param {Object} formData - The submission data
+ * @param {Object} settings - Already-loaded _Settings map
+ * @returns {string[]}
+ */
+function getLunchRecipients(formData, settings) {
+  var recipients = [];
+  var buildingLunchEmail = settings[formData.building + '_LUNCH_EMAIL'];
+  if (buildingLunchEmail) {
+    recipients.push(buildingLunchEmail);
+  }
+  if (settings.LUNCH_CENTRAL_EMAIL && recipients.indexOf(settings.LUNCH_CENTRAL_EMAIL) === -1) {
+    recipients.push(settings.LUNCH_CENTRAL_EMAIL);
+  }
+  return recipients;
+}
+
+/**
+ * Sends lunch totals and name lists to the building's lunch manager and/or the
+ * central lunch contact, once a teacher actually submits real counts (see
+ * LunchHandlers.js's submitLunchCounts) - not tied to trip approval at all,
+ * since counts are usually entered well after submission and independently of
+ * the approval workflow.
+ * @param {Object} formData - The submission data (with lunch_names already populated)
+ * @param {Object} settings - Already-loaded _Settings map
+ */
+function sendLunchCountsNotification(formData, settings) {
+  var recipients = getLunchRecipients(formData, settings);
+  if (!recipients.length) {
+    return; // No lunch email configured for this building or centrally
+  }
+
+  var lunchDashboardUrl = ScriptApp.getService().getUrl() + '?lunchDashboard=1';
+  var namesByOption = parseLunchNamesString(formData.lunch_names);
+
+  var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
+  htmlBody += '<h2>Field Trip Lunch Request</h2>';
+  htmlBody += '<p>A field trip has submitted its final school-provided lunch counts.</p>';
+
+  htmlBody += '<table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">';
+  htmlBody += '<tr><th style="padding: 10px; background: #f0f0f0; text-align: left; border: 1px solid #ddd;">Field</th><th style="padding: 10px; background: #f0f0f0; text-align: left; border: 1px solid #ddd;">Details</th></tr>';
+  htmlBody += '<tr><td style="padding: 10px; border: 1px solid #ddd;">Date</td><td style="padding: 10px; border: 1px solid #ddd;">' + formatEmailDate(formData.trip_date) + '</td></tr>';
+  htmlBody += '<tr><td style="padding: 10px; border: 1px solid #ddd;">Building</td><td style="padding: 10px; border: 1px solid #ddd;">' + formData.building + '</td></tr>';
+  htmlBody += '<tr><td style="padding: 10px; border: 1px solid #ddd;">Teacher</td><td style="padding: 10px; border: 1px solid #ddd;">' + formData.adult_in_charge + '</td></tr>';
+  htmlBody += '</table>';
+
+  htmlBody += '<h3>Lunch Totals</h3>';
+  for (var optionName in namesByOption) {
+    var names = namesByOption[optionName];
+    htmlBody += '<p><strong>' + optionName + ': ' + names.length + '</strong></p>';
+    if (names.length) {
+      htmlBody += '<ul>';
+      for (var i = 0; i < names.length; i++) {
+        htmlBody += '<li>' + names[i] + '</li>';
+      }
+      htmlBody += '</ul>';
+    }
+  }
+
+  htmlBody += '<p style="margin-top: 20px;"><a href="' + lunchDashboardUrl + '" style="font-weight: bold;">View in Lunch Dashboard</a></p>';
+  htmlBody += '</div>';
+
+  try {
+    MailApp.sendEmail({
+      to: recipients.join(','),
+      subject: 'Field Trip Lunch Counts - ' + formatEmailDate(formData.trip_date),
+      htmlBody: htmlBody
+    });
+  } catch (error) {
+    Logger.log('Error sending lunch counts notification: ' + error);
+    notifySystemError('sendLunchCountsNotification (#' + formData.submission_number + ')', error);
+  }
+}
+
+/**
+ * Tells the building's lunch manager and/or central contact that a trip they'd
+ * already received real counts for has since been rejected/cancelled - called
+ * only when lunch_status was already 'Counts Provided' at the time of rejection
+ * (FormHandlers.js), since nothing needs retracting if they were never told.
+ * @param {Object} formData - The submission data
+ * @param {Object} settings - Already-loaded _Settings map
+ */
+function sendLunchCancelledNotification(formData, settings) {
+  var recipients = getLunchRecipients(formData, settings);
+  if (!recipients.length) {
+    return;
+  }
+
+  var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
+  htmlBody += '<h2>Field Trip Lunch Request Cancelled</h2>';
+  htmlBody += '<p>A field trip you previously received lunch counts for has been rejected/cancelled - no lunch is needed.</p>';
+  htmlBody += '<table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">';
+  htmlBody += '<tr><td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Date</td><td style="padding: 10px; border: 1px solid #ddd;">' + formatEmailDate(formData.trip_date) + '</td></tr>';
+  htmlBody += '<tr><td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Building</td><td style="padding: 10px; border: 1px solid #ddd;">' + formData.building + '</td></tr>';
+  htmlBody += '<tr><td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Teacher</td><td style="padding: 10px; border: 1px solid #ddd;">' + formData.adult_in_charge + '</td></tr>';
+  htmlBody += '</table>';
+  htmlBody += '<p style="margin-top: 20px;"><a href="' + ScriptApp.getService().getUrl() + '?lunchDashboard=1" style="font-weight: bold;">View in Lunch Dashboard</a></p>';
+  htmlBody += '</div>';
+
+  try {
+    MailApp.sendEmail({
+      to: recipients.join(','),
+      subject: 'Field Trip Lunch Request Cancelled - ' + formatEmailDate(formData.trip_date),
+      htmlBody: htmlBody
+    });
+  } catch (error) {
+    Logger.log('Error sending lunch cancelled notification: ' + error);
+    notifySystemError('sendLunchCancelledNotification (#' + formData.submission_number + ')', error);
+  }
+}
+
+/**
+ * Reminds the submitting teacher that lunch counts are still missing as the
+ * trip date approaches. Sent by DigestService.js's sendLunchCountReminders.
+ * @param {Object} formData - The submission data
+ */
+function sendLunchCountReminderEmail(formData) {
+  var lunchEntryUrl = ScriptApp.getService().getUrl() + '?idNum=' + formData.submission_number + '&action=lunchEntry';
+
+  var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
+  htmlBody += '<h2>Reminder: School Lunch Counts Needed</h2>';
+  htmlBody += '<p>Your field trip to ' + formData.destination + ' on ' + formatEmailDate(formData.trip_date) + ' requested school-provided lunch, but counts haven\'t been submitted yet.</p>';
+  htmlBody += '<p>The Food Services Department needs at least a week\'s notice to guarantee orders can be processed - please submit your counts soon:</p>';
+  htmlBody += '<p><a href="' + lunchEntryUrl + '" style="font-weight: bold;">Submit Lunch Counts</a></p>';
+  htmlBody += '</div>';
+
+  try {
+    MailApp.sendEmail({
+      to: formData.email,
+      subject: 'Reminder: Submit Lunch Counts for ' + formatEmailDate(formData.trip_date),
+      htmlBody: htmlBody
+    });
+  } catch (error) {
+    Logger.log('Error sending lunch count reminder: ' + error);
+    notifySystemError('sendLunchCountReminderEmail (#' + formData.submission_number + ')', error);
   }
 }

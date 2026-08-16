@@ -322,6 +322,7 @@
             const timeSequence = <?!= JSON.stringify(timeSequence) ?>;
             const userEmail = <?!= JSON.stringify(userEmail) ?>;
             const departAddresses = <?!= JSON.stringify(departAddresses) ?>;
+            const lunchCostText = <?!= JSON.stringify(lunchCostText) ?>;
 
             // Mirrors normalizeAddressForComparison in ValidationUtils.js
             function normalizeAddress(address) {
@@ -495,12 +496,29 @@
                 </div>`;
             }
 
+            // Real lunch counts aren't known at submission time (permission slips/
+            // headcounts firm up later), so this form only collects the Yes/No -
+            // actual name entry happens later via the link in the confirmation email.
+            // lunch_names stays customWidget (FORM_SCHEMA) since there's nothing to
+            // render for it here at all anymore.
+            function buildLunchMessageHtml() {
+                return `<div class="col-md-12 mb-3" id="lunchMessageWrapper" style="display:none;">
+                    <div class="alert alert-info mb-0">${ICON_INFO}
+                        In your confirmation email, you will be provided a link to submit school lunch option counts.
+                        The Food Services Department needs at least a week notice to guarantee orders can be processed.
+                        Field trips with less than a week notice should contact food service directly.
+                        If you lose the email, you can click on link at bottom of field trip form to check status of previous trips and access lunch count.
+                        <br><br>${lunchCostText}
+                    </div>
+                </div>`;
+            }
+
             function renderForm() {
                 let html = '';
 
                 SECTION_ORDER.forEach(function(sectionName) {
                     const keys = Object.keys(formFields).filter(function(k) {
-                        return formFields[k].section === sectionName;
+                        return formFields[k].section === sectionName && !formFields[k].customWidget;
                     });
                     if (!keys.length) return;
 
@@ -530,6 +548,10 @@
                     if (sectionName === 'Transportation Needs') {
                         html += TRANSPORTATION_NOTE_HTML;
                     }
+
+                    if (sectionName === 'Schedule') {
+                        html += `<div class="row">${buildLunchMessageHtml()}</div>`;
+                    }
                 });
 
                 document.getElementById('formFields').innerHTML = html;
@@ -548,6 +570,21 @@
             const alertArea = document.getElementById('alertArea');
             const loadingOverlay = document.getElementById('loadingOverlay');
             const inputs = form.querySelectorAll('input, select, textarea');
+
+            // ---- School Provided Lunch: informational message only ----
+            // Real name/count entry happens later via the link in the confirmation
+            // email (see EmailService.js's sendSubmitterConfirmation) - this form
+            // just shows the explanatory message when Yes is selected.
+            const lunchMessageWrapper = document.getElementById('lunchMessageWrapper');
+
+            function syncLunchMessageFromState() {
+                const checkedRadio = form.querySelector('[name="school_lunch"]:checked');
+                lunchMessageWrapper.style.display = (checkedRadio && checkedRadio.value === 'Yes') ? '' : 'none';
+            }
+
+            form.querySelectorAll('[name="school_lunch"]').forEach(function(radio) {
+                radio.addEventListener('change', syncLunchMessageFromState);
+            });
 
             inputs.forEach(function(input) {
                 input.addEventListener('blur', function() {
@@ -811,6 +848,7 @@
                             }
                         }
                     });
+                    syncLunchMessageFromState();
                     showAlert('Previous draft loaded. Continue editing or submit when ready.', 'info');
                 } catch (e) {
                     console.error('Error loading draft:', e);
@@ -888,6 +926,7 @@
                             inputs.forEach(function(input) {
                                 input.classList.remove('is-valid', 'is-invalid');
                             });
+                            lunchMessageWrapper.style.display = 'none';
 
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                         } else {

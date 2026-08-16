@@ -3,7 +3,8 @@
     "allow": [
       "Bash(clasp push:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nAdd transportation logistics and bus quantity fields\n\nAdded missing form fields before schedule section:\n- Depart From dropdown (school buildings)\n- Destination Address text field\n- Number of Large Buses (56 seated, 2 per seat)\n- Number of Small Buses (15-20 passenger, wheelchair accessible)\n- Number of Vans (requires van certification)\n- Help text for each transportation type\n- Info alert about wheelchair accessibility and Transportation contact\n\nThese fields are required per user specifications for bus-only field trips.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd transportation logistics and bus quantity fields\n\nAdded missing form fields before schedule section:\n- Depart From dropdown (school buildings)\n- Destination Address text field\n- Number of Large Buses (56 seated, 2 per seat)\n- Number of Small Buses (15-20 passenger, wheelchair accessible)\n- Number of Vans (requires van certification)\n- Help text for each transportation type\n- Info alert about wheelchair accessibility and Transportation contact\n\nThese fields are required per user specifications for bus-only field trips.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(clasp deployments *)"
     ],
     "deny": [],
     "ask": []

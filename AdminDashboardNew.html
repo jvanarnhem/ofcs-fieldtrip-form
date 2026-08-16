@@ -378,6 +378,26 @@
                 </div>
 
                 <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label d-block">Add School Prepared Lunch</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="f_school_lunch" id="f_school_lunch_yes" value="Yes">
+                            <label class="form-check-label" for="f_school_lunch_yes">Yes</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="f_school_lunch" id="f_school_lunch_no" value="No">
+                            <label class="form-check-label" for="f_school_lunch_no">No</label>
+                        </div>
+                    </div>
+                    <!-- Read-only: lunch counts are entered later by the teacher via
+                         LunchEntryNew.html, not editable here -->
+                    <div class="col-md-8 mb-3" id="lunchNamesSummaryWrapper" style="display:none;">
+                        <label class="form-label">Lunch Status / Selections</label>
+                        <div id="f_lunch_names_summary" class="form-control-plaintext"></div>
+                    </div>
+                </div>
+
+                <div class="row">
                     <div class="col-md-12 mb-3">
                         <label class="form-label" for="f_purpose">Purpose of Trip *</label>
                         <textarea class="form-control" id="f_purpose" rows="2" maxlength="1000" required></textarea>
@@ -427,12 +447,11 @@
         var GLOBAL_SETTINGS_LABELS = {
             DESTINATION_FOLDER_ID: 'Approved Doc Destination Folder ID',
             INITIAL_SUB_FOLDER_ID: 'Initial Submission Folder ID',
-            TEMPLATE_ID: 'Approval Doc Template ID',
-            TEMPLATE_INIT_ID: 'Initial Submission Doc Template ID',
             CALENDAR_NAME: 'Calendar Name',
             FINAL_EMAIL: 'Final Notification Email',
             DISTRICT_ADMIN: 'District Admin Name',
-            DISTRICT_EMAIL: 'District Admin Email'
+            DISTRICT_EMAIL: 'District Admin Email',
+            ERROR_NOTIFY_EMAIL: 'Error Notification Email'
         };
 
         var editingSubmissionNumber = null; // null => create mode
@@ -1012,11 +1031,26 @@
             });
         });
 
+        // Approve/Reject (row-level or bulk) takes a few seconds server-side (doc
+        // merge, emails, calendar) with no progress UI in between - without this,
+        // the buttons stay clickable that whole time and it looks like nothing
+        // happened, which invites a second click on the same submission.
+        function setActionButtonsDisabled(disabled) {
+            document.querySelectorAll('#resultsArea button, #bulkApproveBtn, #bulkRejectBtn').forEach(function (btn) {
+                btn.disabled = disabled;
+            });
+        }
+
         function bulkAction(ids, action, comment) {
             if (!ids.length) return;
 
+            setActionButtonsDisabled(true);
+            showAlert('Processing ' + ids.length + ' application(s)...', 'info');
+
             google.script.run
                 .withSuccessHandler(function (response) {
+                    setActionButtonsDisabled(false);
+
                     if (!response || !response.success) {
                         showAlert((response && response.message) || 'Something went wrong processing that request.', 'danger');
                         return;
@@ -1036,6 +1070,7 @@
                     reloadCurrentTab();
                 })
                 .withFailureHandler(function (error) {
+                    setActionButtonsDisabled(false);
                     console.error('bulkProcessSubmissions failed:', error);
                     showAlert('Something went wrong processing that request.', 'danger');
                 })
@@ -1129,6 +1164,7 @@
             document.getElementById('statusRow').style.display = '';
             document.getElementById('tripModalAlert').innerHTML = '';
             document.getElementById('tripForm').reset();
+            document.getElementById('lunchNamesSummaryWrapper').style.display = 'none';
             document.getElementById('initialStatus').value = 'Pending Building Approval';
             document.getElementById('notifyCheck').checked = false;
             setTripFormReadOnly(false);
@@ -1138,6 +1174,31 @@
             document.getElementById('tripModalEdit').style.display = 'none';
             document.getElementById('tripModalSave').style.display = '';
             document.getElementById('tripModalOverlay').style.display = 'flex';
+        }
+
+        // Turns lunch_names' "---"-separated blob (see LunchEntryNew.html's
+        // parseLunchNames/EmailService.js's parseLunchNamesString - same format)
+        // into a display string, e.g. "Cheese Pizza: 2 (Alice, Bob)"
+        function formatLunchNamesSummary(str) {
+            var byOption = {};
+            var order = [];
+            var current = null;
+
+            str.split('\n').forEach(function (line) {
+                if (line === '---') {
+                    current = null;
+                } else if (current === null) {
+                    current = line;
+                    if (!byOption[current]) { byOption[current] = []; order.push(current); }
+                } else if (line.trim()) {
+                    byOption[current].push(line.trim());
+                }
+            });
+
+            return order.map(function (optionName) {
+                var names = byOption[optionName];
+                return optionName + ': ' + names.length + (names.length ? ' (' + names.join(', ') + ')' : '');
+            }).join('<br>');
         }
 
         // Opens a submission in read-only mode - administrators should rarely be
@@ -1175,6 +1236,19 @@
             if (submission.extra_stop_restroom === 'Yes') document.getElementById('f_extra_stop_restroom_yes').checked = true;
             if (submission.extra_stop_restroom === 'No') document.getElementById('f_extra_stop_restroom_no').checked = true;
             document.getElementById('f_need_box_truck').checked = submission.need_box_truck === 'Yes';
+
+            if (submission.school_lunch === 'Yes') document.getElementById('f_school_lunch_yes').checked = true;
+            if (submission.school_lunch === 'No') document.getElementById('f_school_lunch_no').checked = true;
+
+            var lunchNamesSummaryWrapper = document.getElementById('lunchNamesSummaryWrapper');
+            if (submission.school_lunch === 'Yes') {
+                var lunchStatusLine = '<div><strong>Status:</strong> ' + (submission.lunch_status || 'Awaiting Counts') + '</div>';
+                var lunchNamesLine = submission.lunch_names ? formatLunchNamesSummary(submission.lunch_names) : '';
+                document.getElementById('f_lunch_names_summary').innerHTML = lunchStatusLine + lunchNamesLine;
+                lunchNamesSummaryWrapper.style.display = '';
+            } else {
+                lunchNamesSummaryWrapper.style.display = 'none';
+            }
 
             setTripFormReadOnly(true);
             document.getElementById('tripModalCancel').textContent = 'Close';
@@ -1240,6 +1314,10 @@
             data.extra_stop_restroom = restYes.checked ? 'Yes' : (restNo.checked ? 'No' : '');
 
             data.need_box_truck = document.getElementById('f_need_box_truck').checked ? 'Yes' : '';
+
+            var lunchYes = document.getElementById('f_school_lunch_yes');
+            var lunchNo = document.getElementById('f_school_lunch_no');
+            data.school_lunch = lunchYes.checked ? 'Yes' : (lunchNo.checked ? 'No' : '');
 
             return data;
         }
@@ -1619,7 +1697,7 @@
 
             var roleSelect = null;
             if (rosterCanManageAll) {
-                roleSelect = makeAddAdminSelect('newAdminRole', 'Role', ['building', 'district', 'super']);
+                roleSelect = makeAddAdminSelect('newAdminRole', 'Role', ['building', 'district', 'super', 'lunch', 'lunch_district']);
                 wrap.appendChild(roleSelect.wrap);
             }
 
@@ -1629,7 +1707,8 @@
 
             if (roleSelect) {
                 var toggleBuilding = function () {
-                    buildingSelect.wrap.style.display = roleSelect.select.value === 'building' ? '' : 'none';
+                    var role = roleSelect.select.value;
+                    buildingSelect.wrap.style.display = (role === 'building' || role === 'lunch') ? '' : 'none';
                 };
                 roleSelect.select.addEventListener('change', toggleBuilding);
                 toggleBuilding();

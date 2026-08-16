@@ -235,6 +235,39 @@ var FORM_SCHEMA = {
     section: 'Schedule',
     col: 6
   },
+  school_lunch: {
+    type: 'radio',
+    columnHeader: 'School_Lunch',
+    required: false,
+    label: 'Add School Prepared Lunch',
+    options: ['Yes', 'No'],
+    section: 'Schedule',
+    col: 6
+  },
+  lunch_names: {
+    type: 'lunchNames',
+    columnHeader: 'Lunch_Names',
+    required: false,
+    label: 'Lunch Selections',
+    section: 'Schedule',
+    col: 12,
+    customWidget: true
+  },
+  lunch_status: {
+    type: 'text',
+    columnHeader: 'Lunch_Status',
+    systemGenerated: true
+  },
+  lunch_counts_entered_date: {
+    type: 'date',
+    columnHeader: 'Lunch_Counts_Entered_Date',
+    systemGenerated: true
+  },
+  lunch_reminder_sent_date: {
+    type: 'date',
+    columnHeader: 'Lunch_Reminder_Sent_Date',
+    systemGenerated: true
+  },
 
   // Purpose
   purpose: {
@@ -324,6 +357,17 @@ var STATUS_VALUES = {
   PENDING_DISTRICT: 'Pending District Approval',
   APPROVED: 'Approved',
   REJECTED: 'Rejected'
+};
+
+/**
+ * Lunch-count entry status - separate from and independent of STATUS_VALUES
+ * (a trip's approval status), tracked via lunch_status
+ */
+var LUNCH_STATUS_VALUES = {
+  AWAITING_COUNTS: 'Awaiting Counts',
+  COUNTS_PROVIDED: 'Counts Provided',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled'
 };
 
 /**

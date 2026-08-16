@@ -96,6 +96,7 @@
         // Always the signed-in visitor's own email - never a free-typed one, so this
         // can't be used to look up anyone else's submissions
         const userEmail = <?!= JSON.stringify(userEmail) ?>;
+        const webAppUrl = <?!= JSON.stringify(webAppUrl) ?>;
 
         document.getElementById('showingForLabel').textContent = 'Showing results for ' + userEmail;
 
@@ -144,7 +145,7 @@
 
             var table = document.createElement('table');
             table.className = 'table table-hover';
-            table.innerHTML = '<thead><tr><th>#</th><th>Destination</th><th>Trip Date</th><th>Status</th></tr></thead>';
+            table.innerHTML = '<thead><tr><th>#</th><th>Destination</th><th>Trip Date</th><th>Status</th><th>Lunch</th></tr></thead>';
 
             var tbody = document.createElement('tbody');
             submissions.forEach(function (s) {
@@ -168,6 +169,20 @@
                 badge.textContent = s.status || '-';
                 tdStatus.appendChild(badge);
                 tr.appendChild(tdStatus);
+
+                var tdLunch = document.createElement('td');
+                if (s.school_lunch === 'Yes' && s.status !== 'Rejected') {
+                    var lunchLink = document.createElement('a');
+                    lunchLink.href = webAppUrl + '?action=lunchEntry&idNum=' + s.submission_number;
+                    lunchLink.target = '_top';
+                    lunchLink.textContent = (s.lunch_status === 'Counts Provided') ? 'Update Lunch Counts' : 'Enter Lunch Counts';
+                    tdLunch.appendChild(lunchLink);
+                } else if (s.school_lunch === 'Yes') {
+                    tdLunch.textContent = 'Cancelled';
+                } else {
+                    tdLunch.textContent = '—';
+                }
+                tr.appendChild(tdLunch);
 
                 tbody.appendChild(tr);
             });

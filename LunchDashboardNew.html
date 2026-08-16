@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base target="_top">
+    <title>Lunch Dashboard - Field Trip Application</title>
+
+    <!-- Bootstrap 5 CSS, vendored locally (no external CDN request) -->
+    <?!= include('VendorStyles'); ?>
+
+    <style>
+        body {
+            background: #e8e8e8;
+            min-height: 100vh;
+            padding: 20px 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .dashboard-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, #000068 0%, #0d47a1 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .open-form-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            text-decoration: none;
+        }
+
+        .open-form-btn:hover {
+            background: rgba(255,255,255,0.3);
+            color: #fff;
+        }
+
+        .dashboard-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .dashboard-body {
+            padding: 40px;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #000068 0%, #0d47a1 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-submit:hover {
+            color: white;
+            opacity: 0.9;
+        }
+
+        #resultsArea table, #historyResultsArea table {
+            font-size: 0.92rem;
+        }
+
+        #resultsArea tbody tr, #historyResultsArea tbody tr {
+            cursor: pointer;
+        }
+
+        .lunch-count-badge {
+            margin-right: 4px;
+            margin-bottom: 2px;
+            display: inline-block;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .modal-box {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid" style="max-width: 1100px;">
+        <div class="dashboard-container">
+            <div class="dashboard-header">
+                <a href="<?!= webAppUrl ?>" target="_blank" rel="noopener" class="open-form-btn">Open Form ↗</a>
+                <h1>Lunch Dashboard</h1>
+                <p class="mb-0" id="roleLine">Field Trip Application</p>
+            </div>
+
+            <div class="dashboard-body">
+                <div id="alertArea"></div>
+
+                <ul class="nav nav-tabs mb-3" id="lunchTabs">
+                    <li class="nav-item">
+                        <button type="button" class="nav-link active" id="tabBtn_requests" data-tab="requests">Requests</button>
+                    </li>
+                    <li class="nav-item">
+                        <button type="button" class="nav-link" id="tabBtn_history" data-tab="history">History</button>
+                    </li>
+                    <li class="nav-item">
+                        <button type="button" class="nav-link" id="tabBtn_settings" data-tab="settings">Settings</button>
+                    </li>
+                </ul>
+
+                <div id="tabPane_requests">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap row-gap-2">
+                        <h5 class="mb-0">Lunch Requests</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="text" class="form-control form-control-sm" id="requestsFilterInput" placeholder="Filter as you type..." style="width: 240px;">
+                            <button type="button" class="btn btn-outline-secondary" id="refreshBtn">Refresh</button>
+                        </div>
+                    </div>
+                    <p class="text-muted small">Click a row to show/hide student names. Trips move to History automatically once their date has passed.</p>
+                    <div id="resultsArea"><p class="text-muted">Loading...</p></div>
+                </div>
+
+                <div id="tabPane_history" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap row-gap-2">
+                        <h5 class="mb-0">Lunch History</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="text" class="form-control form-control-sm" id="historyFilterInput" placeholder="Filter as you type..." style="width: 240px;">
+                            <button type="button" class="btn btn-outline-secondary" id="refreshHistoryBtn">Refresh</button>
+                        </div>
+                    </div>
+                    <div id="historyResultsArea"><p class="text-muted">Loading...</p></div>
+                </div>
+
+                <div id="tabPane_settings" style="display:none;">
+                <h5>Lunch Settings</h5>
+                <div id="settingsAlert"></div>
+
+                <div id="lunchGlobalSection" style="display:none;">
+                    <label class="form-label">Lunch Options</label>
+                    <p class="text-muted small mb-2">Short name shows next to student counts everywhere. Description is just helper text shown to staff completing the entry, so they can tell their students what's included.</p>
+                    <div id="lunchOptionsRows" class="mb-2"></div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="addLunchOptionBtn">+ Add Option</button>
+
+                    <label class="form-label" for="lunchCentralEmailField">Central Lunch Email</label>
+                    <input type="email" class="form-control mb-3" id="lunchCentralEmailField">
+
+                    <label class="form-label d-block">Lunch Cost</label>
+                    <p class="text-muted small mb-2">Shown to teachers on the form, in the confirmation email, and on the lunch count entry page.</p>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label small mb-1" for="lunchCostTier1Grades">Grades</label>
+                            <input type="text" class="form-control form-control-sm" id="lunchCostTier1Grades" placeholder="K-5">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small mb-1" for="lunchCostTier1Amount">Cost ($)</label>
+                            <input type="text" class="form-control form-control-sm" id="lunchCostTier1Amount" placeholder="3.00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small mb-1" for="lunchCostTier2Grades">Grades</label>
+                            <input type="text" class="form-control form-control-sm" id="lunchCostTier2Grades" placeholder="6-12">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small mb-1" for="lunchCostTier2Amount">Cost ($)</label>
+                            <input type="text" class="form-control form-control-sm" id="lunchCostTier2Amount" placeholder="3.35">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row" id="lunchBuildingFields"></div>
+
+                <button type="button" class="btn btn-submit mb-2" id="saveLunchSettingsBtn">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit lunch counts modal - hand-rolled overlay, matching AdminDashboardNew.html's
+         pattern, since only Bootstrap CSS (not the JS bundle) is vendored on this page -->
+    <div class="modal-overlay" id="editLunchModalOverlay" style="display:none;">
+        <div class="modal-box">
+            <div class="d-flex justify-content-between align-items-start">
+                <h5 class="mb-0">Edit Lunch Counts</h5>
+                <button type="button" class="btn-close" id="editLunchModalX" aria-label="Close"></button>
+            </div>
+            <p class="text-muted small mb-3" id="editLunchModalMeta"></p>
+            <div id="editLunchModalFields"></div>
+            <div class="text-end mt-3">
+                <button type="button" class="btn btn-outline-secondary" id="editLunchModalCancel">Cancel</button>
+                <button type="button" class="btn btn-submit" id="editLunchModalSave">Save Counts</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Only Bootstrap JS feature used on this page is alert dismissal, so a full bundle isn't vendored -->
+    <script>
+        document.addEventListener('click', function (e) {
+            var dismissBtn = e.target.closest('[data-bs-dismiss="alert"]');
+            if (dismissBtn) {
+                var alertEl = dismissBtn.closest('.alert');
+                if (alertEl) alertEl.remove();
+            }
+        });
+
+        var ctx = <?!= JSON.stringify(ctx) ?>;
+        var lunchOptions = <?!= JSON.stringify(lunchOptions) ?>;
+
+        // ---------- Tabs ----------
+        var TAB_NAMES = ['requests', 'history', 'settings'];
+
+        document.getElementById('lunchTabs').addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-tab]');
+            if (!btn) return;
+
+            document.querySelectorAll('#lunchTabs .nav-link').forEach(function (link) {
+                link.classList.toggle('active', link === btn);
+            });
+            TAB_NAMES.forEach(function (name) {
+                document.getElementById('tabPane_' + name).style.display = (btn.dataset.tab === name) ? '' : 'none';
+            });
+        });
+
+        function showAlert(message, type) {
+            var div = document.createElement('div');
+            div.className = 'alert alert-' + type + ' alert-dismissible fade show';
+            div.setAttribute('role', 'alert');
+            div.textContent = message;
+
+            var closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'btn-close';
+            closeBtn.setAttribute('data-bs-dismiss', 'alert');
+            div.appendChild(closeBtn);
+
+            var area = document.getElementById('alertArea');
+            area.innerHTML = '';
+            area.appendChild(div);
+        }
+
+        function initRoleUI() {
+            var roleLabel = ctx.isLunchDistrict ? 'District Lunch Coordinator' : 'Lunch Manager (' + ctx.lunchBuildings.join(', ') + ')';
+            document.getElementById('roleLine').textContent = (ctx.name ? ctx.name + ' — ' : '') + roleLabel;
+        }
+
+        function statusBadgeClass(status) {
+            if (status === 'Completed') return 'text-bg-primary';
+            if (status === 'Counts Provided') return 'text-bg-success';
+            if (status === 'Cancelled') return 'text-bg-secondary';
+            return 'text-bg-warning';
+        }
+
+        function historyResultLabel(t) {
+            if (t.lunch_status === 'Cancelled') return 'Cancelled';
+            return (t.lunch_status === 'Completed') ? 'Completed' : 'Past Date';
+        }
+
+        function historyResultBadgeClass(label) {
+            if (label === 'Completed') return 'text-bg-primary';
+            if (label === 'Cancelled') return 'text-bg-secondary';
+            return 'text-bg-warning'; // Past Date
+        }
+
+        // Same "---"-separated blob format used everywhere else this data is read/
+        // written (LunchEntryNew.html/LunchHandlers.js/EmailService.js)
+        function parseLunchNames(str) {
+            var result = {};
+            var order = [];
+            if (!str) return { byOption: result, order: order };
+            var current = null;
+            str.split('\n').forEach(function (line) {
+                if (line === '---') {
+                    current = null;
+                } else if (current === null) {
+                    current = line;
+                    if (!result[current]) { result[current] = []; order.push(current); }
+                } else if (line.trim()) {
+                    result[current].push(line.trim());
+                }
+            });
+            return { byOption: result, order: order };
+        }
+
+        // Counts-only view (default, row collapsed) vs. full names (row expanded)
+        function formatLunchCounts(str) {
+            var parsed = parseLunchNames(str);
+            if (!parsed.order.length) return '<span class="text-muted">—</span>';
+            return parsed.order.map(function (optionName) {
+                return '<span class="badge text-bg-light border lunch-count-badge">' +
+                    optionName + ': ' + parsed.byOption[optionName].length + '</span>';
+            }).join('');
+        }
+
+        function formatLunchDetails(str) {
+            var parsed = parseLunchNames(str);
+            if (!parsed.order.length) return '<span class="text-muted">—</span>';
+            return parsed.order.map(function (optionName) {
+                var names = parsed.byOption[optionName];
+                return '<div><strong>' + optionName + ': ' + names.length + '</strong>' +
+                    (names.length ? '<br><span class="text-muted">' + names.join(', ') + '</span>' : '') + '</div>';
+            }).join('');
+        }
+
+        // ---------- Requests / History: shared data, filter, sort, expand ----------
+        var allTrips = [];
+        var requestTrips = [];
+        var historyTrips = [];
+        var requestsSort = { key: 'trip_date', dir: 'asc' };
+        var historySort = { key: 'trip_date', dir: 'asc' };
+        var expandedRequestIds = {};
+        var expandedHistoryIds = {};
+
+        var REQUEST_COLUMNS = [
+            { key: 'trip_date', label: 'Date' },
+            { key: 'building', label: 'Building' },
+            { key: 'destination', label: 'Destination' },
+            { key: 'adult_in_charge', label: 'Teacher' },
+            { key: 'lunch_status', label: 'Status' }
+        ];
+
+        var HISTORY_COLUMNS = [
+            { key: 'trip_date', label: 'Date' },
+            { key: 'building', label: 'Building' },
+            { key: 'destination', label: 'Destination' },
+            { key: 'adult_in_charge', label: 'Teacher' },
+            { key: '_historyLabel', label: 'Result' }
+        ];
+
+        // A trip moves out of Requests the moment it's manually cancelled (kept for
+        // logging), or on its own once trip_date has passed - whether or not it was
+        // ever marked Done. Everything else (including Done trips whose date hasn't
+        // arrived yet) stays in Requests with its status badge as the only indicator.
+        function partitionTrips(trips) {
+            var today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            var requests = [];
+            var history = [];
+            trips.forEach(function (t) {
+                var tripDate = t.trip_date ? new Date(t.trip_date) : null;
+                var isPast = tripDate && tripDate < today;
+                if (t.lunch_status === 'Cancelled' || isPast) {
+                    t._historyLabel = historyResultLabel(t);
+                    history.push(t);
+                } else {
+                    requests.push(t);
+                }
+            });
+            return { requests: requests, history: history };
+        }
+
+        function loadAllLunchData() {
+            document.getElementById('resultsArea').innerHTML = '<p class="text-muted">Loading...</p>';
+            document.getElementById('historyResultsArea').innerHTML = '<p class="text-muted">Loading...</p>';
+
+            google.script.run
+                .withSuccessHandler(function (raw) {
+                    var response = null;
+                    try { response = JSON.parse(raw); } catch (e) { response = null; }
+
+                    if (!response || !response.success) {
+                        var msg = '<div class="alert alert-danger">' + ((response && response.message) || 'Unable to load lunch requests.') + '</div>';
+                        document.getElementById('resultsArea').innerHTML = msg;
+                        document.getElementById('historyResultsArea').innerHTML = msg;
+                        return;
+                    }
+                    allTrips = response.trips || [];
+                    var partitioned = partitionTrips(allTrips);
+                    requestTrips = partitioned.requests;
+                    historyTrips = partitioned.history;
+                    applyRequestsFilterAndSort();
+                    applyHistoryFilterAndSort();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('getLunchDashboardData failed:', error);
+                    var msg = '<div class="alert alert-danger">Something went wrong loading lunch requests.</div>';
+                    document.getElementById('resultsArea').innerHTML = msg;
+                    document.getElementById('historyResultsArea').innerHTML = msg;
+                })
+                .getLunchDashboardData();
+        }
+
+        // Every visible column plus the raw lunch names blob, so filtering also
+        // catches a student name typed into the box, not just row-level fields.
+        function tripSearchText(t) {
+            return [
+                t.trip_date ? new Date(t.trip_date).toLocaleDateString() : '',
+                t.building || '',
+                t.destination || '',
+                t.adult_in_charge || '',
+                t.lunch_status || '',
+                t._historyLabel || '',
+                t.lunch_names || ''
+            ].join(' ').toLowerCase();
+        }
+
+        function compareTrips(a, b, key, dir) {
+            var result;
+            if (key === 'trip_date') {
+                result = new Date(a.trip_date || 0) - new Date(b.trip_date || 0);
+            } else {
+                var av = String(a[key] || '').toLowerCase();
+                var bv = String(b[key] || '').toLowerCase();
+                result = av < bv ? -1 : (av > bv ? 1 : 0);
+            }
+            return dir === 'desc' ? -result : result;
+        }
+
+        function filterAndSort(list, term, sort) {
+            var filtered = term
+                ? list.filter(function (t) { return tripSearchText(t).indexOf(term) !== -1; })
+                : list.slice();
+            filtered.sort(function (a, b) { return compareTrips(a, b, sort.key, sort.dir); });
+            return filtered;
+        }
+
+        function applyRequestsFilterAndSort() {
+            var term = document.getElementById('requestsFilterInput').value.trim().toLowerCase();
+            renderTripTable({
+                area: document.getElementById('resultsArea'),
+                allList: requestTrips,
+                filteredList: filterAndSort(requestTrips, term, requestsSort),
+                columns: REQUEST_COLUMNS,
+                sort: requestsSort,
+                onSortChange: applyRequestsFilterAndSort,
+                expandedIds: expandedRequestIds,
+                showActions: true,
+                emptyMessage: 'No lunch requests found.',
+                noMatchMessage: 'No requests match your filter.'
+            });
+        }
+
+        function applyHistoryFilterAndSort() {
+            var term = document.getElementById('historyFilterInput').value.trim().toLowerCase();
+            renderTripTable({
+                area: document.getElementById('historyResultsArea'),
+                allList: historyTrips,
+                filteredList: filterAndSort(historyTrips, term, historySort),
+                columns: HISTORY_COLUMNS,
+                sort: historySort,
+                onSortChange: applyHistoryFilterAndSort,
+                expandedIds: expandedHistoryIds,
+                showActions: false,
+                emptyMessage: 'No past lunch requests yet.',
+                noMatchMessage: 'No history entries match your filter.'
+            });
+        }
+
+        document.getElementById('requestsFilterInput').addEventListener('input', applyRequestsFilterAndSort);
+        document.getElementById('historyFilterInput').addEventListener('input', applyHistoryFilterAndSort);
+
+        // Shared renderer for both the Requests and History tables - column set,
+        // sort state, and whether action buttons show all vary by opts.
+        function renderTripTable(opts) {
+            var area = opts.area;
+            area.innerHTML = '';
+
+            if (!opts.allList.length) {
+                area.innerHTML = '<p class="text-muted">' + opts.emptyMessage + '</p>';
+                return;
+            }
+            if (!opts.filteredList.length) {
+                area.innerHTML = '<p class="text-muted">' + opts.noMatchMessage + '</p>';
+                return;
+            }
+
+            var table = document.createElement('table');
+            table.className = 'table table-hover align-middle';
+
+            var thead = document.createElement('thead');
+            var headRow = document.createElement('tr');
+            opts.columns.forEach(function (col) {
+                var th = document.createElement('th');
+                th.style.cursor = 'pointer';
+                th.style.userSelect = 'none';
+
+                var arrow = (opts.sort.key === col.key) ? (' ' + (opts.sort.dir === 'asc' ? '▲' : '▼')) : '';
+                th.textContent = col.label + arrow;
+
+                th.addEventListener('click', function () {
+                    if (opts.sort.key === col.key) {
+                        opts.sort.dir = (opts.sort.dir === 'asc') ? 'desc' : 'asc';
+                    } else {
+                        opts.sort.key = col.key;
+                        opts.sort.dir = 'asc';
+                    }
+                    opts.onSortChange();
+                });
+
+                headRow.appendChild(th);
+            });
+            headRow.appendChild(document.createElement('th')).textContent = 'Details';
+            if (opts.showActions) {
+                headRow.appendChild(document.createElement('th')).textContent = 'Actions';
+            }
+            thead.appendChild(headRow);
+            table.appendChild(thead);
+
+            var tbody = document.createElement('tbody');
+            opts.filteredList.forEach(function (t) {
+                var tr = document.createElement('tr');
+
+                var tdDate = document.createElement('td');
+                tdDate.textContent = t.trip_date ? new Date(t.trip_date).toLocaleDateString() : '-';
+                tr.appendChild(tdDate);
+
+                var tdBuilding = document.createElement('td');
+                tdBuilding.textContent = t.building || '-';
+                tr.appendChild(tdBuilding);
+
+                var tdDest = document.createElement('td');
+                tdDest.textContent = t.destination || '-';
+                tr.appendChild(tdDest);
+
+                var tdTeacher = document.createElement('td');
+                tdTeacher.textContent = t.adult_in_charge || '-';
+                tr.appendChild(tdTeacher);
+
+                var tdStatus = document.createElement('td');
+                var badge = document.createElement('span');
+                if (opts.showActions) {
+                    badge.className = 'badge ' + statusBadgeClass(t.lunch_status);
+                    badge.textContent = t.lunch_status || '-';
+                } else {
+                    badge.className = 'badge ' + historyResultBadgeClass(t._historyLabel);
+                    badge.textContent = t._historyLabel;
+                }
+                tdStatus.appendChild(badge);
+                tr.appendChild(tdStatus);
+
+                var tdDetails = document.createElement('td');
+                var isExpanded = !!opts.expandedIds[t.submission_number];
+                tdDetails.innerHTML = isExpanded ? formatLunchDetails(t.lunch_names) : formatLunchCounts(t.lunch_names);
+                tr.appendChild(tdDetails);
+
+                tr.addEventListener('click', function (e) {
+                    if (e.target.closest('button')) return;
+                    var nowExpanded = !opts.expandedIds[t.submission_number];
+                    opts.expandedIds[t.submission_number] = nowExpanded;
+                    tdDetails.innerHTML = nowExpanded ? formatLunchDetails(t.lunch_names) : formatLunchCounts(t.lunch_names);
+                });
+
+                if (opts.showActions) {
+                    var tdActions = document.createElement('td');
+                    tdActions.className = 'text-nowrap';
+
+                    if (t.lunch_status !== 'Completed') {
+                        var doneBtn = document.createElement('button');
+                        doneBtn.type = 'button';
+                        doneBtn.className = 'btn btn-outline-success btn-sm me-1';
+                        doneBtn.textContent = 'Done';
+                        doneBtn.addEventListener('click', function () { markLunchDone(t.submission_number); });
+                        tdActions.appendChild(doneBtn);
+                    }
+
+                    var editBtn = document.createElement('button');
+                    editBtn.type = 'button';
+                    editBtn.className = 'btn btn-outline-primary btn-sm me-1';
+                    editBtn.textContent = 'Edit';
+                    editBtn.addEventListener('click', function () { openEditLunchModal(t); });
+                    tdActions.appendChild(editBtn);
+
+                    var cancelBtn = document.createElement('button');
+                    cancelBtn.type = 'button';
+                    cancelBtn.className = 'btn btn-outline-danger btn-sm';
+                    cancelBtn.textContent = 'Cancel';
+                    cancelBtn.addEventListener('click', function () { cancelLunchRequestClick(t.submission_number); });
+                    tdActions.appendChild(cancelBtn);
+
+                    tr.appendChild(tdActions);
+                }
+
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            area.appendChild(table);
+        }
+
+        document.getElementById('refreshBtn').addEventListener('click', loadAllLunchData);
+        document.getElementById('refreshHistoryBtn').addEventListener('click', loadAllLunchData);
+
+        // ---------- Requests: Done / Cancel / Edit actions ----------
+        function markLunchDone(idNum) {
+            google.script.run
+                .withSuccessHandler(function (raw) {
+                    var response = null;
+                    try { response = JSON.parse(raw); } catch (e) { response = null; }
+                    if (!response || !response.success) {
+                        showAlert((response && response.message) || 'Unable to mark this request done.', 'danger');
+                        return;
+                    }
+                    showAlert('Marked done.', 'success');
+                    loadAllLunchData();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('markLunchRequestDone failed:', error);
+                    showAlert('Something went wrong marking this request done.', 'danger');
+                })
+                .markLunchRequestDone(idNum);
+        }
+
+        function cancelLunchRequestClick(idNum) {
+            if (!confirm('Cancel this lunch request? It will move to History as Cancelled.')) return;
+
+            google.script.run
+                .withSuccessHandler(function (raw) {
+                    var response = null;
+                    try { response = JSON.parse(raw); } catch (e) { response = null; }
+                    if (!response || !response.success) {
+                        showAlert((response && response.message) || 'Unable to cancel this request.', 'danger');
+                        return;
+                    }
+                    showAlert('Lunch request cancelled.', 'success');
+                    loadAllLunchData();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('cancelLunchRequest failed:', error);
+                    showAlert('Something went wrong cancelling this request.', 'danger');
+                })
+                .cancelLunchRequest(idNum);
+        }
+
+        // ---------- Edit lunch counts modal ----------
+        var editingLunchIdNum = null;
+
+        function openEditLunchModal(t) {
+            editingLunchIdNum = t.submission_number;
+            document.getElementById('editLunchModalMeta').textContent =
+                (t.destination || '') + ' · ' + (t.trip_date ? new Date(t.trip_date).toLocaleDateString() : '') + ' · ' + (t.building || '');
+
+            var fieldsArea = document.getElementById('editLunchModalFields');
+            fieldsArea.innerHTML = '';
+
+            if (!lunchOptions.length) {
+                fieldsArea.innerHTML = '<p class="text-muted">No lunch options have been configured yet.</p>';
+            } else {
+                var existing = parseLunchNames(t.lunch_names).byOption;
+                lunchOptions.forEach(function (option) {
+                    var block = document.createElement('div');
+                    block.className = 'mb-3';
+
+                    var label = document.createElement('label');
+                    label.className = 'form-label mb-1';
+                    label.textContent = option.name;
+                    block.appendChild(label);
+
+                    var textarea = document.createElement('textarea');
+                    textarea.className = 'form-control edit-lunch-option-input';
+                    textarea.rows = 4;
+                    textarea.dataset.option = option.name;
+                    textarea.placeholder = 'One student name per line';
+                    textarea.value = (existing[option.name] || []).join('\n');
+                    block.appendChild(textarea);
+
+                    fieldsArea.appendChild(block);
+                });
+            }
+
+            document.getElementById('editLunchModalOverlay').style.display = 'flex';
+        }
+
+        function closeEditLunchModal() {
+            document.getElementById('editLunchModalOverlay').style.display = 'none';
+            editingLunchIdNum = null;
+        }
+
+        document.getElementById('editLunchModalX').addEventListener('click', closeEditLunchModal);
+        document.getElementById('editLunchModalCancel').addEventListener('click', closeEditLunchModal);
+
+        document.getElementById('editLunchModalSave').addEventListener('click', function () {
+            var namesByOption = {};
+            document.querySelectorAll('.edit-lunch-option-input').forEach(function (ta) {
+                namesByOption[ta.dataset.option] = ta.value.split('\n').map(function (n) { return n.trim(); }).filter(Boolean);
+            });
+
+            var lines = [];
+            lunchOptions.forEach(function (option, i) {
+                if (i > 0) lines.push('---');
+                lines.push(option.name);
+                (namesByOption[option.name] || []).forEach(function (n) { lines.push(n); });
+            });
+            var lunchNamesValue = lines.join('\n');
+
+            var btn = document.getElementById('editLunchModalSave');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            google.script.run
+                .withSuccessHandler(function (raw) {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Counts';
+
+                    var response = null;
+                    try { response = JSON.parse(raw); } catch (e) { response = null; }
+                    if (!response || !response.success) {
+                        showAlert((response && response.message) || 'Unable to save lunch counts.', 'danger');
+                        return;
+                    }
+
+                    closeEditLunchModal();
+                    showAlert('Lunch counts updated.', 'success');
+                    loadAllLunchData();
+                })
+                .withFailureHandler(function (error) {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Counts';
+                    console.error('adminUpdateLunchCounts failed:', error);
+                    showAlert('Something went wrong updating lunch counts.', 'danger');
+                })
+                .adminUpdateLunchCounts(editingLunchIdNum, lunchNamesValue);
+        });
+
+        // ---------- Settings ----------
+        function loadSettings() {
+            document.getElementById('settingsAlert').innerHTML = '';
+            document.getElementById('lunchBuildingFields').innerHTML = '<p class="text-muted">Loading...</p>';
+
+            google.script.run
+                .withSuccessHandler(function (raw) {
+                    var response = null;
+                    try { response = JSON.parse(raw); } catch (e) { response = null; }
+
+                    if (!response || !response.success) {
+                        document.getElementById('lunchBuildingFields').innerHTML =
+                            '<div class="alert alert-danger">' + ((response && response.message) || 'Unable to load lunch settings.') + '</div>';
+                        return;
+                    }
+                    renderSettings(response);
+                })
+                .withFailureHandler(function (error) {
+                    console.error('getLunchSettingsForDashboard failed:', error);
+                    document.getElementById('lunchBuildingFields').innerHTML = '<div class="alert alert-danger">Something went wrong loading lunch settings.</div>';
+                })
+                .getLunchSettingsForDashboard();
+        }
+
+        // Mirrors LunchHandlers.js's parseLunchOptions - "Short Name|Description" per
+        // line, description optional. Kept in sync manually since this is client-side.
+        function parseLunchOptionsSetting(str) {
+            return String(str || '').split('\n').map(function (line) {
+                var parts = line.split('|');
+                return {
+                    name: (parts[0] || '').trim(),
+                    description: parts.slice(1).join('|').trim()
+                };
+            }).filter(function (opt) { return opt.name; });
+        }
+
+        function addLunchOptionRow(option) {
+            option = option || { name: '', description: '' };
+
+            var row = document.createElement('div');
+            row.className = 'lunch-option-row border rounded p-2 mb-2';
+
+            var rowInner = document.createElement('div');
+            rowInner.className = 'row g-2 align-items-center';
+
+            var nameCol = document.createElement('div');
+            nameCol.className = 'col-md-4';
+            var nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'form-control form-control-sm lunch-opt-name';
+            nameInput.placeholder = 'Short name (e.g. Nacho Meal)';
+            nameInput.value = option.name;
+            nameCol.appendChild(nameInput);
+
+            var descCol = document.createElement('div');
+            descCol.className = 'col-md-7';
+            var descInput = document.createElement('input');
+            descInput.type = 'text';
+            descInput.className = 'form-control form-control-sm lunch-opt-desc';
+            descInput.placeholder = "Description shown to staff (e.g. what's included)";
+            descInput.value = option.description;
+            descCol.appendChild(descInput);
+
+            var removeCol = document.createElement('div');
+            removeCol.className = 'col-md-1';
+            var removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-outline-danger btn-sm remove-lunch-opt';
+            removeBtn.textContent = '×';
+            removeCol.appendChild(removeBtn);
+
+            rowInner.appendChild(nameCol);
+            rowInner.appendChild(descCol);
+            rowInner.appendChild(removeCol);
+            row.appendChild(rowInner);
+
+            document.getElementById('lunchOptionsRows').appendChild(row);
+        }
+
+        document.getElementById('lunchOptionsRows').addEventListener('click', function (e) {
+            var btn = e.target.closest('.remove-lunch-opt');
+            if (btn) btn.closest('.lunch-option-row').remove();
+        });
+
+        document.getElementById('addLunchOptionBtn').addEventListener('click', function () {
+            addLunchOptionRow();
+        });
+
+        function collectLunchOptionsValue() {
+            var lines = [];
+            document.querySelectorAll('#lunchOptionsRows .lunch-option-row').forEach(function (row) {
+                var name = row.querySelector('.lunch-opt-name').value.trim();
+                var desc = row.querySelector('.lunch-opt-desc').value.trim();
+                if (!name) return;
+                lines.push(desc ? (name + '|' + desc) : name);
+            });
+            return lines.join('\n');
+        }
+
+        function renderSettings(response) {
+            var globalSection = document.getElementById('lunchGlobalSection');
+
+            if (response.global) {
+                globalSection.style.display = '';
+
+                var optionsRows = document.getElementById('lunchOptionsRows');
+                optionsRows.innerHTML = '';
+                var opts = parseLunchOptionsSetting(response.global.LUNCH_OPTIONS || '');
+                if (!opts.length) opts = [{ name: '', description: '' }];
+                opts.forEach(addLunchOptionRow);
+
+                document.getElementById('lunchCentralEmailField').value = response.global.LUNCH_CENTRAL_EMAIL || '';
+
+                document.getElementById('lunchCostTier1Grades').value = response.global.LUNCH_COST_TIER1_GRADES || 'K-5';
+                document.getElementById('lunchCostTier1Amount').value = response.global.LUNCH_COST_TIER1_AMOUNT || '3.00';
+                document.getElementById('lunchCostTier2Grades').value = response.global.LUNCH_COST_TIER2_GRADES || '6-12';
+                document.getElementById('lunchCostTier2Amount').value = response.global.LUNCH_COST_TIER2_AMOUNT || '3.35';
+            } else {
+                globalSection.style.display = 'none';
+            }
+
+            var buildingFields = document.getElementById('lunchBuildingFields');
+            buildingFields.innerHTML = '';
+
+            Object.keys(response.buildings || {}).forEach(function (code) {
+                var b = response.buildings[code];
+                var col = document.createElement('div');
+                col.className = 'col-md-6 mb-3';
+
+                var card = document.createElement('div');
+                card.className = 'border rounded p-3';
+
+                var heading = document.createElement('strong');
+                heading.textContent = code;
+                card.appendChild(heading);
+
+                var lbl = document.createElement('label');
+                lbl.className = 'form-label small mb-1 d-block mt-2';
+                lbl.textContent = 'Lunch Manager Email';
+                card.appendChild(lbl);
+
+                var input = document.createElement('input');
+                input.type = 'email';
+                input.className = 'form-control form-control-sm';
+                input.id = 'lb_' + code + '_LUNCH_EMAIL';
+                input.value = b.lunchEmail;
+                card.appendChild(input);
+
+                col.appendChild(card);
+                buildingFields.appendChild(col);
+            });
+        }
+
+        document.getElementById('saveLunchSettingsBtn').addEventListener('click', function () {
+            var updates = {};
+
+            if (document.getElementById('lunchGlobalSection').style.display !== 'none') {
+                updates.LUNCH_OPTIONS = collectLunchOptionsValue();
+                updates.LUNCH_CENTRAL_EMAIL = document.getElementById('lunchCentralEmailField').value;
+                updates.LUNCH_COST_TIER1_GRADES = document.getElementById('lunchCostTier1Grades').value;
+                updates.LUNCH_COST_TIER1_AMOUNT = document.getElementById('lunchCostTier1Amount').value;
+                updates.LUNCH_COST_TIER2_GRADES = document.getElementById('lunchCostTier2Grades').value;
+                updates.LUNCH_COST_TIER2_AMOUNT = document.getElementById('lunchCostTier2Amount').value;
+            }
+
+            document.querySelectorAll('#lunchBuildingFields input').forEach(function (input) {
+                updates[input.id.replace(/^lb_/, '')] = input.value;
+            });
+
+            var btn = document.getElementById('saveLunchSettingsBtn');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            google.script.run
+                .withSuccessHandler(function (raw) {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Settings';
+
+                    var response = null;
+                    try { response = JSON.parse(raw); } catch (e) { response = null; }
+
+                    if (!response || !response.success) {
+                        document.getElementById('settingsAlert').innerHTML =
+                            '<div class="alert alert-danger">' + ((response && response.message) || 'Unable to save lunch settings.') + '</div>';
+                        return;
+                    }
+
+                    var msg = response.saved.length + ' setting(s) saved.';
+                    if (response.skipped && response.skipped.length) {
+                        msg += ' (' + response.skipped.length + ' not permitted and skipped.)';
+                    }
+                    document.getElementById('settingsAlert').innerHTML = '<div class="alert alert-success">' + msg + '</div>';
+                })
+                .withFailureHandler(function (error) {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Settings';
+                    console.error('saveLunchSettings failed:', error);
+                    document.getElementById('settingsAlert').innerHTML = '<div class="alert alert-danger">Something went wrong saving lunch settings.</div>';
+                })
+                .saveLunchSettings(JSON.stringify(updates));
+        });
+
+        initRoleUI();
+        loadAllLunchData();
+        loadSettings();
+    </script>
+</body>
+</html>

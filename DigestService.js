@@ -13,43 +13,52 @@
  * via a time-based trigger - see createDailyDigestTrigger() below for one-time setup.
  */
 function sendDailyDigests() {
-  var settings = getSettings();
-  var sheet = getAppSpreadsheet().getSheetByName('Submissions');
-  var columnMapping = getColumnMapping(sheet);
-  var data = sheet.getDataRange().getValues();
+  // No admin is watching a trigger run in real time, so unlike the RPCs elsewhere
+  // in the app, this whole function has to catch its own failures - an uncaught
+  // exception here just means every digest-mode building silently gets no email
+  // that day, with nobody finding out until someone asks where their trips went.
+  try {
+    var settings = getSettings();
+    var sheet = getAppSpreadsheet().getSheetByName('Submissions');
+    var columnMapping = getColumnMapping(sheet);
+    var data = sheet.getDataRange().getValues();
 
-  var pendingByBuilding = {};
-  var pendingDistrict = [];
-  for (var i = 1; i < data.length; i++) {
-    var rowObj = rowToObject(data[i], columnMapping);
+    var pendingByBuilding = {};
+    var pendingDistrict = [];
+    for (var i = 1; i < data.length; i++) {
+      var rowObj = rowToObject(data[i], columnMapping);
 
-    if (rowObj.status === STATUS_VALUES.PENDING_BUILDING) {
-      if (!pendingByBuilding[rowObj.building]) {
-        pendingByBuilding[rowObj.building] = [];
+      if (rowObj.status === STATUS_VALUES.PENDING_BUILDING) {
+        if (!pendingByBuilding[rowObj.building]) {
+          pendingByBuilding[rowObj.building] = [];
+        }
+        pendingByBuilding[rowObj.building].push(rowObj);
+      } else if (rowObj.status === STATUS_VALUES.PENDING_DISTRICT) {
+        pendingDistrict.push(rowObj);
       }
-      pendingByBuilding[rowObj.building].push(rowObj);
-    } else if (rowObj.status === STATUS_VALUES.PENDING_DISTRICT) {
-      pendingDistrict.push(rowObj);
     }
-  }
 
-  FORM_SCHEMA.building.options.forEach(function (code) {
-    var mode = settings[code + '_NOTIFY_MODE'] || 'instant';
-    if (mode !== 'digest') return;
+    FORM_SCHEMA.building.options.forEach(function (code) {
+      var mode = settings[code + '_NOTIFY_MODE'] || 'instant';
+      if (mode !== 'digest') return;
 
-    var pending = pendingByBuilding[code] || [];
-    if (!pending.length) return;
+      var pending = pendingByBuilding[code] || [];
+      if (!pending.length) return;
 
-    var adminEmail = settings[code + '_EMAIL'];
-    var adminName = settings[code + '_ADMIN'] || 'Admin';
-    if (!adminEmail) return;
+      var adminEmail = settings[code + '_EMAIL'];
+      var adminName = settings[code + '_ADMIN'] || 'Admin';
+      if (!adminEmail) return;
 
-    sendBuildingDigestEmail(adminEmail, adminName, code, pending);
-  });
+      sendBuildingDigestEmail(adminEmail, adminName, code, pending);
+    });
 
-  var districtMode = settings.DISTRICT_NOTIFY_MODE || 'instant';
-  if (districtMode === 'digest' && pendingDistrict.length && settings.DISTRICT_EMAIL) {
-    sendDistrictDigestEmail(settings.DISTRICT_EMAIL, settings.DISTRICT_ADMIN || 'Admin', pendingDistrict);
+    var districtMode = settings.DISTRICT_NOTIFY_MODE || 'instant';
+    if (districtMode === 'digest' && pendingDistrict.length && settings.DISTRICT_EMAIL) {
+      sendDistrictDigestEmail(settings.DISTRICT_EMAIL, settings.DISTRICT_ADMIN || 'Admin', pendingDistrict);
+    }
+  } catch (error) {
+    Logger.log('sendDailyDigests error: ' + error);
+    notifySystemError('sendDailyDigests', error);
   }
 }
 
@@ -111,6 +120,7 @@ function sendBuildingDigestEmail(adminEmail, adminName, building, pending) {
     });
   } catch (error) {
     Logger.log('Error sending digest email for ' + building + ': ' + error);
+    notifySystemError('sendBuildingDigestEmail (' + building + ')', error);
   }
 }
 
@@ -175,6 +185,7 @@ function sendDistrictDigestEmail(adminEmail, adminName, pending) {
     });
   } catch (error) {
     Logger.log('Error sending district digest email: ' + error);
+    notifySystemError('sendDistrictDigestEmail', error);
   }
 }
 
@@ -201,4 +212,74 @@ function createDailyDigestTrigger() {
     .create();
 
   Logger.log('Daily digest trigger installed - sendDailyDigests will run once a day, around 6am.');
+}
+
+/**
+ * Reminds the submitting teacher to enter school lunch counts as the trip date
+ * approaches, if they haven't already. Runs once a day via a time-based trigger -
+ * see createLunchReminderTrigger() below for one-time setup. Fires once per trip
+ * (lunch_reminder_sent_date dedupes it), not daily, once inside the window.
+ */
+var LUNCH_REMINDER_WINDOW_DAYS = 10;
+
+function sendLunchCountReminders() {
+  // Same reasoning as sendDailyDigests above - this only ever runs unattended via
+  // trigger, so it has to catch its own failures or a broken run just means every
+  // teacher who needed a reminder that day silently never gets one.
+  try {
+    var sheet = getAppSpreadsheet().getSheetByName('Submissions');
+    var columnMapping = getColumnMapping(sheet);
+    var data = sheet.getDataRange().getValues();
+
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (var i = 1; i < data.length; i++) {
+      var rowObj = rowToObject(data[i], columnMapping);
+
+      if (rowObj.lunch_status !== LUNCH_STATUS_VALUES.AWAITING_COUNTS || rowObj.lunch_reminder_sent_date) {
+        continue;
+      }
+
+      var tripDate = rowObj.trip_date instanceof Date ? rowObj.trip_date : new Date(rowObj.trip_date);
+      if (isNaN(tripDate)) {
+        continue;
+      }
+      tripDate.setHours(0, 0, 0, 0);
+
+      var daysUntilTrip = Math.round((tripDate - today) / (1000 * 60 * 60 * 24));
+      if (daysUntilTrip <= 0 || daysUntilTrip > LUNCH_REMINDER_WINDOW_DAYS) {
+        continue;
+      }
+
+      sendLunchCountReminderEmail(rowObj);
+      updateSubmission(rowObj.submission_number, { lunch_reminder_sent_date: new Date() });
+    }
+  } catch (error) {
+    Logger.log('sendLunchCountReminders error: ' + error);
+    notifySystemError('sendLunchCountReminders', error);
+  }
+}
+
+/**
+ * One-time setup: installs the daily trigger that calls sendLunchCountReminders().
+ * Same manual-per-project install caveat as createDailyDigestTrigger above - run
+ * once from the Apps Script editor, not something clasp push installs. Safe to
+ * re-run: removes any existing sendLunchCountReminders trigger first.
+ */
+function createLunchReminderTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (trigger) {
+    if (trigger.getHandlerFunction() === 'sendLunchCountReminders') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  ScriptApp.newTrigger('sendLunchCountReminders')
+    .timeBased()
+    .atHour(6)
+    .everyDays(1)
+    .inTimezone(Session.getScriptTimeZone())
+    .create();
+
+  Logger.log('Lunch reminder trigger installed - sendLunchCountReminders will run once a day, around 6am.');
 }

@@ -8,7 +8,11 @@ var ADMINS_CACHE_TTL = 900;
 var ADMIN_ROLES = {
   BUILDING: 'building',
   DISTRICT: 'district',
-  SUPER: 'super'
+  SUPER: 'super',
+  // Lunch roles are intentionally separate from isAdmin below - they grant
+  // access to the Lunch Dashboard only, never to the trip-approval dashboard
+  LUNCH: 'lunch',
+  LUNCH_DISTRICT: 'lunch_district'
 };
 
 /**
@@ -62,7 +66,7 @@ function getAdminsRoster() {
 /**
  * Looks up every admin role granted to an email address
  * @param {string} email - Google account email of the visitor
- * @returns {Object} { isAdmin, isSuper, isDistrict, buildings, name }
+ * @returns {Object} { isAdmin, isSuper, isDistrict, buildings, isLunch, isLunchDistrict, lunchBuildings, name }
  */
 function getAdminContext(email) {
   var normalizedEmail = String(email || '').trim().toLowerCase();
@@ -71,6 +75,9 @@ function getAdminContext(email) {
     isSuper: false,
     isDistrict: false,
     buildings: [],
+    isLunch: false,
+    isLunchDistrict: false,
+    lunchBuildings: [],
     name: ''
   };
 
@@ -87,20 +94,40 @@ function getAdminContext(email) {
       continue;
     }
 
-    context.isAdmin = true;
     context.name = context.name || row.name;
 
+    // isAdmin gates the trip-approval dashboard (?dashboard=1) - only the three
+    // trip-approval roles satisfy it. Lunch roles are handled entirely separately
+    // below so a lunch-only grant can never reach the trip-approval dashboard.
     if (row.role === ADMIN_ROLES.SUPER) {
+      context.isAdmin = true;
       context.isSuper = true;
     } else if (row.role === ADMIN_ROLES.DISTRICT) {
+      context.isAdmin = true;
       context.isDistrict = true;
-    } else if (row.role === ADMIN_ROLES.BUILDING && row.building && context.buildings.indexOf(row.building) === -1) {
-      context.buildings.push(row.building);
+    } else if (row.role === ADMIN_ROLES.BUILDING && row.building) {
+      context.isAdmin = true;
+      if (context.buildings.indexOf(row.building) === -1) {
+        context.buildings.push(row.building);
+      }
+    } else if (row.role === ADMIN_ROLES.LUNCH_DISTRICT) {
+      context.isLunch = true;
+      context.isLunchDistrict = true;
+    } else if (row.role === ADMIN_ROLES.LUNCH && row.building) {
+      context.isLunch = true;
+      if (context.lunchBuildings.indexOf(row.building) === -1) {
+        context.lunchBuildings.push(row.building);
+      }
     }
   }
 
   if (context.isSuper) {
     context.isDistrict = true;
+    // Super admins oversee everything, including the Lunch Dashboard - they
+    // shouldn't need a separate lunch_district grant just to get in and set up
+    // lunch options/emails or grant lunch roles to actual Food Services Department Staff.
+    context.isLunch = true;
+    context.isLunchDistrict = true;
   }
 
   return context;
@@ -140,4 +167,15 @@ function canActOnBuildingStage(ctx, building) {
  */
 function canActOnDistrictStage(ctx) {
   return ctx.isDistrict;
+}
+
+/**
+ * Checks whether an admin context can see/act on a given building's lunch data
+ * on the Lunch Dashboard - mirrors canActOnBuildingStage's shape
+ * @param {Object} ctx - Result of getDashboardContext()
+ * @param {string} building - Building code of the submission being viewed
+ * @returns {boolean}
+ */
+function canActOnLunch(ctx, building) {
+  return ctx.isLunchDistrict || ctx.lunchBuildings.indexOf(building) !== -1;
 }
